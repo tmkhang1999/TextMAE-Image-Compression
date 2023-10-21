@@ -3,28 +3,30 @@ import models_mae_new
 import os
 
 
-class MAE:
-    def __init__(self, gan_loss=False, arch='mae_vit_large_patch16'):
-        self.chkpt_dir = self.get_model_arch(gan_loss)
+class Mae:
+    def __init__(self, arch='mae_vit_large_patch16'):
         self.arch = arch
 
-    def prepare_model(self):
+    def prepare_model(self, gan_loss=False):
+        # Get model weight path
+        model_path = self.get_model_path(gan_loss)
+
         # Check if the checkpoint file exists, if not, download it
-        if not os.path.exists(self.chkpt_dir):
-            download_link = self.get_download_link(self.chkpt_dir)
+        if not os.path.exists(model_path):
+            download_link = self.get_download_link(model_path)
             os.system(f"wget -nc -P weights/mae/ {download_link}")
 
         # Build model
         model = getattr(models_mae_new, self.arch)()
 
         # Load model
-        checkpoint = torch.load(self.chkpt_dir, map_location='cpu')
+        checkpoint = torch.load(model_path, map_location='cpu')
         msg = model.load_state_dict(checkpoint['model'], strict=False)
 
         return model, msg
 
     @staticmethod
-    def get_model_arch(gan_loss):
+    def get_model_path(gan_loss):
         if gan_loss:
             return "weights/mae/mae_vit_large_patch16_ganloss.pth"
         else:
