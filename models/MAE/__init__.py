@@ -22,8 +22,9 @@ class Mae:
         # Load model
         checkpoint = torch.load(model_path, map_location='cpu')
         msg = model.load_state_dict(checkpoint['model'], strict=False)
+        print(msg)
 
-        return model, msg
+        return model
 
     @staticmethod
     def get_model_path(gan_loss):
