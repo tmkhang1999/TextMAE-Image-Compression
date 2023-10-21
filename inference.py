@@ -4,9 +4,11 @@ import numpy as np
 from utils.mae_preprocessing import process, calculate_patch_score, get_filtered_indices
 from models import Mae, Diffuser, Blip2
 
-mae_model, _ = Mae().prepare_model(gan_loss=True)
+mae_model = Mae().prepare_model(gan_loss=True)
+
 diffusion_model = Diffuser()
 diffusion_model.prepare_model()
+
 blip_model = Blip2()
 blip_model.prepare_model()
 
