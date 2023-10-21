@@ -1,6 +1,8 @@
 import torch
-import models_mae_new
+import sys 
+sys.path.append('.\\models\\MAE')
 import os
+import models_mae_new
 
 
 class Mae:
@@ -14,7 +16,7 @@ class Mae:
         # Check if the checkpoint file exists, if not, download it
         if not os.path.exists(model_path):
             download_link = self.get_download_link(model_path)
-            os.system(f"wget -nc -P weights/mae/ {download_link}")
+            os.system(f"wget -nc -P weights\\mae\\ {download_link}")
 
         # Build model
         model = getattr(models_mae_new, self.arch)()
@@ -29,9 +31,9 @@ class Mae:
     @staticmethod
     def get_model_path(gan_loss):
         if gan_loss:
-            return "weights/mae/mae_vit_large_patch16_ganloss.pth"
+            return "weights\\mae\\mae_visualize_vit_large_ganloss.pth"
         else:
-            return "weights/mae/mae_vit_large_patch16.pth"
+            return "weights\\mae\\mae_visualize_vit_large.pth"
 
     @staticmethod
     def get_download_link(chkpt_dir):

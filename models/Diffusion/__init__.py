@@ -16,8 +16,8 @@ class Diffuser:
         else:
             log.error(f"Model name '{model_name}' is not recognized.")
 
-    def refine_image(self, image, caption):
-        return self.model(caption, image).images[0]
+    def refine_image(self, caption, image):
+        return self.model(caption, image=image).images[0]
 
 
 def stable_diffusion_xl_refiner_1(device):
