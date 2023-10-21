@@ -60,3 +60,17 @@ def calculate_patch_score(img):
     total_score = t_score * s_score
 
     return total_score
+
+
+def process(img, imagenet_mean, imagenet_std):
+    orig_shape = img.size
+    img = img.resize((224, 224))
+    img = np.array(img) / 255.
+
+    assert img.shape == (224, 224, 3)
+
+    # normalize by ImageNet mean and std
+    img = img - imagenet_mean
+    img = img / imagenet_std
+
+    return img, orig_shape
