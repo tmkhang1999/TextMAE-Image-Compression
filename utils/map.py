@@ -1,9 +1,10 @@
 import cv2
 import numpy as np
 
+
 # Check if need to continue divide
 def Division_Judge(img, h0, w0, h, w):
-    area = img[h0 : h0 + h, w0 : w0 + w]
+    area = img[h0: h0 + h, w0: w0 + w]
     mean = np.mean(area)
     std = np.std(area, ddof=1)
 
@@ -21,24 +22,27 @@ def Division_Judge(img, h0, w0, h, w):
     else:
         return False
 
+
 # Merging
 def Merge(img, h0, w0, h, w):
-    for row in range(h0, h0+h):
-        for col in range(w0, w0+w):
+    for row in range(h0, h0 + h):
+        for col in range(w0, w0 + w):
             if 60 < img[row, col] < 150:
                 img[row, col] = 0
             else:
                 img[row, col] = 255
 
+
 # Recursion
 def Recursion(img, h0, w0, h, w):
     if not Division_Judge(img, h0, w0, h, w) and min(h, w) > 5:
-        Recursion(img, h0, w0, int(h/2), int(w/2))
-        Recursion(img, h0, w0+int(w/2), int(h/2), int(w/2))
-        Recursion(img, h0+int(h/2), w0, int(h/2), int(w/2))
-        Recursion(img, h0+int(h/2), w0+int(w/2), int(h/2), int(w/2))
+        Recursion(img, h0, w0, int(h / 2), int(w / 2))
+        Recursion(img, h0, w0 + int(w / 2), int(h / 2), int(w / 2))
+        Recursion(img, h0 + int(h / 2), w0, int(h / 2), int(w / 2))
+        Recursion(img, h0 + int(h / 2), w0 + int(w / 2), int(h / 2), int(w / 2))
     else:
         Merge(img, h0, w0, h, w)
+
 
 # Image segmentation
 def Division_Merge_Segmented(img, new_shape):
@@ -53,6 +57,7 @@ def Division_Merge_Segmented(img, new_shape):
     img = img[1:-1, 1:-1]
 
     return cv2.resize(img, new_shape)
+
 
 def laplacian(img, new_shape):
     # Load image
