@@ -1,0 +1,7 @@
+opencv-python~=4.8.1.78
+numpy~=1.26.1
+torch~=2.1.0
+timm~=0.9.8
+diffusers~=0.21.4
+Pillow~=10.1.0
+transformers~=4.34.1
