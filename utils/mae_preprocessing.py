@@ -5,8 +5,14 @@ import math
 from utils.distribution import cal_patch_score
 from utils.map import Division_Merge_Segmented, laplacian
 
+import numpy as np
+from collections import Counter
 
-def get_filtered_indices(scores, keep_ratio=0.2):
+
+def get_filtered_indices(scores, num_keep_patch=144):
+    if num_keep_patch > len(scores):
+        raise ValueError("num_keep_patch should not be greater than the length of scores (196).")
+
     sorted_scores = np.sort(scores)
 
     # Calculate percentiles and thresholds
@@ -17,9 +23,9 @@ def get_filtered_indices(scores, keep_ratio=0.2):
     categories = np.digitize(sorted_scores, thresholds)
 
     # Calculate group means
-    group_means = [np.mean(sorted_scores[categories == group]) for group in range(len(percentiles) + 1)]
+    group_means = np.array([np.mean(sorted_scores[categories == group]) for group in range(len(percentiles) + 1)])
 
-    # Keep values from the group with highest category (categorized_data == 9)
+    # Keep values from the group with the highest category (categorized_data == 9)
     keep_values = list(sorted_scores[categories == 9])
 
     # Apply softmax to group means for other groups
@@ -28,7 +34,7 @@ def get_filtered_indices(scores, keep_ratio=0.2):
         return e_x / e_x.sum()
 
     softmaxed_means = softmax(group_means[:-1])  # Exclude the last group
-    new_target = math.ceil(keep_ratio * len(sorted_scores) - len(keep_values))
+    new_target = num_keep_patch - len(keep_values)
     scaled_means = np.round(softmaxed_means * new_target)
 
     # Populate high_category_values

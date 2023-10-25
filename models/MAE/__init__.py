@@ -1,5 +1,6 @@
 import torch
-import sys 
+import sys
+
 sys.path.append('.\\models\\MAE')
 import os
 import models_mae_new
