@@ -33,13 +33,8 @@ def main(img_path, num_keep_patch=64):
 
     # Encode
     total_score = calculate_patch_score(orig_img)
-<<<<<<< Updated upstream
     ids_shuffle = get_filtered_indices(total_score, num_keep_patch)
     feature_map, _, ids_restore = mae_model.forward_encoder(x.float(), num_keep_patch, ids_shuffle)
-=======
-    ids_shuffle = get_filtered_indices(total_score, 1 - mask_ratio)
-    feature_map, _, ids_restore = mae_model.forward_encoder(x.float(), ids_shuffle)
->>>>>>> Stashed changes
 
     # Decode
     pred = mae_model.forward_decoder(feature_map, ids_restore)
