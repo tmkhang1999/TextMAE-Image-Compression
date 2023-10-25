@@ -6,48 +6,48 @@ from utils.distribution import cal_patch_score
 from utils.map import Division_Merge_Segmented, laplacian
 
 
-def get_filtered_indices(scores, num_keep_patch):
-    sorted_scores = np.sort(scores)
+# def get_filtered_indices(scores, num_keep_patch):
+#     sorted_scores = np.sort(scores)
 
-    # Calculate percentiles and thresholds
-    percentiles = np.arange(10, 91, 10)
-    thresholds = np.percentile(np.unique(sorted_scores), percentiles)
+#     # Calculate percentiles and thresholds
+#     percentiles = np.arange(10, 91, 10)
+#     thresholds = np.percentile(np.unique(sorted_scores), percentiles)
 
-    # Categorize data into groups
-    categories = np.digitize(sorted_scores, thresholds)
+#     # Categorize data into groups
+#     categories = np.digitize(sorted_scores, thresholds)
 
-    # Calculate group means
-    group_means = np.array([np.mean(sorted_scores[categories == group]) for group in range(len(percentiles) + 1)])
+#     # Calculate group means
+#     group_means = np.array([np.mean(sorted_scores[categories == group]) for group in range(len(percentiles) + 1)])
 
-    # Keep values from the group with the highest category (categorized_data == 9)
-    keep_values = list(sorted_scores[categories == 9])
+#     # Keep values from the group with the highest category (categorized_data == 9)
+#     keep_values = list(sorted_scores[categories == 9])
 
-    # Apply softmax to group means for other groups
-    def softmax(x):
-        e_x = np.exp(x - np.max(x))
-        return e_x / e_x.sum()
+#     # Apply softmax to group means for other groups
+#     def softmax(x):
+#         e_x = np.exp(x - np.max(x))
+#         return e_x / e_x.sum()
 
-    softmaxed_means = softmax(group_means[:-1])  # Exclude the last group
-    new_target = num_keep_patch - len(keep_values)
-    scaled_means = np.round(softmaxed_means * new_target)
+#     softmaxed_means = softmax(group_means[:-1])  # Exclude the last group
+#     new_target = num_keep_patch - len(keep_values)
+#     scaled_means = np.round(softmaxed_means * new_target)
 
-    # Populate high_category_values
-    for i, num_to_keep in enumerate(scaled_means):
-        start_index = len(sorted_scores[categories == i]) - num_to_keep
-        keep_values.extend(list(sorted_scores[categories == i][int(start_index):]))
+#     # Populate high_category_values
+#     for i, num_to_keep in enumerate(scaled_means):
+#         start_index = len(sorted_scores[categories == i]) - num_to_keep
+#         keep_values.extend(list(sorted_scores[categories == i][int(start_index):]))
 
-    keep_values.append(sorted_scores[0])  # Append the least important patch
-    keep_values_frequency = Counter(keep_values)
-    indices = []
+#     keep_values.append(sorted_scores[0])  # Append the least important patch
+#     keep_values_frequency = Counter(keep_values)
+#     indices = []
 
-    # Create a list of indices
-    for value, freq in keep_values_frequency.items():
-        indices.extend(list(np.where(scores == value)[0][:freq]))
+#     # Create a list of indices
+#     for value, freq in keep_values_frequency.items():
+#         indices.extend(list(np.where(scores == value)[0][:freq]))
 
-    remaining_indices = [i for i in range(len(scores)) if i not in indices]
-    indices.extend(remaining_indices)
+#     remaining_indices = [i for i in range(len(scores)) if i not in indices]
+#     indices.extend(remaining_indices)
 
-    return indices
+#     return indices
 
 
 def calculate_patch_score(img):
