@@ -9,10 +9,7 @@ import numpy as np
 from collections import Counter
 
 
-def get_filtered_indices(scores, num_keep_patch=144):
-    if num_keep_patch > len(scores):
-        raise ValueError("num_keep_patch should not be greater than the length of scores (196).")
-
+def get_filtered_indices(scores, keep_ratio=0.2):
     sorted_scores = np.sort(scores)
 
     # Calculate percentiles and thresholds
@@ -68,15 +65,15 @@ def calculate_patch_score(img):
     return total_score
 
 
-def process(img, imagenet_mean, imagenet_std):
-    orig_shape = img.size
-    img = img.resize((224, 224))
-    img = np.array(img) / 255.
+# def process(img, imagenet_mean, imagenet_std):
+#     orig_shape = img.size
+#     img = img.resize((224, 224))
+#     img = np.array(img) / 255.
 
-    assert img.shape == (224, 224, 3)
+#     assert img.shape == (224, 224, 3)
 
-    # normalize by ImageNet mean and std
-    img = img - imagenet_mean
-    img = img / imagenet_std
+#     # normalize by ImageNet mean and std
+#     img = img - imagenet_mean
+#     img = img / imagenet_std
 
-    return img, orig_shape
+#     return img, orig_shape
