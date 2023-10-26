@@ -2,30 +2,7 @@ import torch.nn as nn
 from torchvision import models
 from collections import namedtuple
 
-
-def feature_network(net_type="vgg16", gpu_ids=[], requires_grad=False):
-    """
-    Define feature network
-
-    Args:
-        net_type (str): Type of network, Example: 'vgg16'
-        gpu_ids (List[int]): GPU ids
-        requires_grad (bool): If True, requires gradient
-
-    Returns:
-        feature_network (nn.Module): Feature network
-
-    """
-    feature_network = None
-
-    if net_type == "vgg16":
-        feature_network = Vgg16(requires_grad=requires_grad)
-    else:
-        raise NotImplementedError("Feature net name [%s] is not recognized" % net_type)
-
-    feature_network.cuda()
-
-    return feature_network
+from models.Compression.common.misc import de_normalize, normalize_batch
 
 
 # feature loss network
@@ -78,3 +55,60 @@ class Vgg16(nn.Module):
 
         out = vgg_outputs(h_relu1_2, h_relu2_2, h_relu3_3, h_relu4_3)
         return out
+
+
+def feature_network(net_type="vgg16", requires_grad=False):
+    """
+    Define feature network
+
+    Args:
+        net_type (str): Type of network, Example: 'vgg16'
+        gpu_ids (List[int]): GPU ids
+        requires_grad (bool): If True, requires gradient
+
+    Returns:
+        feature_network (nn.Module): Feature network
+
+    """
+    feature_network = None
+
+    if net_type == "vgg16":
+        feature_network = Vgg16(requires_grad=requires_grad)
+    else:
+        raise NotImplementedError("Feature net name [%s] is not recognized" % net_type)
+
+    feature_network.cpu()
+
+    return feature_network
+
+
+def cal_features_loss(preds, imgs):
+    """
+    Calculates the features loss using VGG16
+
+    Args:
+        preds (torch.Tensor): Batch-like predictions (N, H, W, 3)
+        imgs (torch.Tensor): Batch-like images (N, H, W, 3)
+
+    Returns:
+        feature_loss (torch.Tensor): Batch-like loss
+    """
+
+    # Define featuremap network VGG16
+    vgg_model = feature_network(net_type="vgg16", requires_grad=False)
+
+    # Denormalize the batch-like images
+    pred_F2_denorm = de_normalize(preds)
+    gt_F2_denorm = de_normalize(imgs)
+
+    # Normalize the batch-like images
+    pred_F2_norm = normalize_batch(pred_F2_denorm)
+    gt_F2_norm = normalize_batch(gt_F2_denorm)
+
+    # Featuremap after passing into VGG16
+    feature_pred_F2 = vgg_model(pred_F2_norm)
+    feature_gt_F2 = vgg_model(gt_F2_norm)
+    feature_loss = nn.MSELoss()(
+        feature_pred_F2.relu2_2, feature_gt_F2.relu2_2
+    ) + nn.MSELoss()(feature_pred_F2.relu3_3, feature_gt_F2.relu3_3)
+    return feature_loss
