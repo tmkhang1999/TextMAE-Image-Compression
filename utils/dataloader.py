@@ -5,7 +5,7 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 
 from utils.dataset_paths import known_datasets 
-from utils.mae_preprocessing import calculate_patch_score, get_filtered_indices
+from utils.mae_preprocessing import calculate_patch_score
 
 __all__ = ["ImageDataset", "get_image_dateset"]
 
