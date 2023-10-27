@@ -9,8 +9,9 @@
 # --------------------------------------------------------
 
 
-import numpy as np 
-import torch 
+import numpy as np
+import torch
+
 
 # --------------------------------------------------------
 # 2D sine-cosine position embedding
@@ -42,6 +43,7 @@ def get_2d_sincos_pos_embed(embed_dim, grid_size, cls_token=False):
         pos_embed = np.concatenate([np.zeros([1, embed_dim]), pos_embed], axis=0)
     return pos_embed
 
+
 def get_2d_sincos_pos_embed_from_grid(embed_dim, grid):
     """
     Get 2d position embedding from grid
@@ -59,8 +61,9 @@ def get_2d_sincos_pos_embed_from_grid(embed_dim, grid):
     emb_h = get_1d_sincos_pos_embed_from_grid(embed_dim // 2, grid[0])  # (H*W, D/2)
     emb_w = get_1d_sincos_pos_embed_from_grid(embed_dim // 2, grid[1])  # (H*W, D/2)
 
-    pos_embed = np.concatenate([emb_h, emb_w], axis=1) # (H*W, D)
+    pos_embed = np.concatenate([emb_h, emb_w], axis=1)  # (H*W, D)
     return pos_embed
+
 
 def get_1d_sincos_pos_embed_from_grid(embed_dim, pos):
     """
@@ -76,16 +79,17 @@ def get_1d_sincos_pos_embed_from_grid(embed_dim, pos):
     assert embed_dim % 2 == 0
     omega = np.arange(embed_dim // 2, dtype=np.float_)
     omega /= embed_dim / 2.
-    omega = 1. / 10000**omega  # (D/2,)
+    omega = 1. / 10000 ** omega  # (D/2,)
 
     pos = pos.reshape(-1)  # (M,)
     out = np.einsum('m,d->md', pos, omega)  # (M, D/2), outer product
 
-    emb_sin = np.sin(out) # (M, D/2)
-    emb_cos = np.cos(out) # (M, D/2)
+    emb_sin = np.sin(out)  # (M, D/2)
+    emb_cos = np.cos(out)  # (M, D/2)
 
     pos_embed = np.concatenate([emb_sin, emb_cos], axis=1)  # (M, D)
     return pos_embed
+
 
 # --------------------------------------------------------
 # Interpolate position embeddings for high-resolution
