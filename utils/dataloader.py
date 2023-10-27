@@ -2,13 +2,14 @@ from PIL import Image
 from pathlib import Path
 from torch.utils.data import Dataset
 from torchvision import transforms
-from utils.dataset_paths import known_datasets
-from utils.mae_preprocessing import calculate_patch_score
+from utils.dataset_paths import get_dataset_path
+from utils.distribution import cal_patch_score
+from utils.map import Division_Merge_Segmented, laplacian
 
-__all__ = ["ImageDataset", "get_image_dataset"]  # Fix typo in the export name
+__all__ = ["CreateImageDataset", "get_image_dataset"]  # Fix typo in the export name
 
 
-class ImageDataset(Dataset):
+class CreateImageDataset(Dataset):
     def __init__(self, dataset_path, transform):
         """
         Custom dataset for image data.
@@ -32,6 +33,18 @@ class ImageDataset(Dataset):
         total_score = calculate_patch_score(orig_img)
         img = self.transform(orig_img)
         return img, orig_shape, total_score
+
+
+def calculate_patch_score(img):
+    s_map = Division_Merge_Segmented(img, (224, 224))
+    t_map = laplacian(img, (224, 224))
+
+    s_score = cal_patch_score(s_map)
+    t_score = cal_patch_score(t_map)
+
+    total_score = t_score * s_score
+
+    return total_score
 
 
 def get_image_dataset(name: str, transform_cfg: dict = None) -> Dataset:
@@ -65,5 +78,5 @@ def get_image_dataset(name: str, transform_cfg: dict = None) -> Dataset:
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
-    dataset = ImageDataset(dataset_path=known_datasets.get(name, name), transform=transform)
+    dataset = CreateImageDataset(dataset_path=get_dataset_path(name), transform=transform)
     return dataset
