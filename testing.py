@@ -17,9 +17,3 @@ out_dec = model.decompress(
     out_enc["string"], out_enc["shape"], out_enc["ids_restore"])
 print(out_dec['x_hat'].shape)
 
-# 1, 144, 768 (FM)
-# -> 1, 12, 12, 768
-# -> 1, 768, 12, 12
-# -> 1, 384, 12, 12
-# -> 1, 384, 3, 3
-# -> 12x(1,32,3,3) Number_slices
