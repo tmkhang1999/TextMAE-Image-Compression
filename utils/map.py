@@ -4,7 +4,7 @@ import numpy as np
 
 # Check if need to continue divide
 def Division_Judge(img, h0, w0, h, w):
-    area = img[h0: h0 + h, w0: w0 + w]
+    area = img[h0 : h0 + h, w0 : w0 + w]
     mean = np.mean(area)
     std = np.std(area, ddof=1)
 
