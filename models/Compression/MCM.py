@@ -34,535 +34,236 @@ class MCM(CompressionModel):
     """
 
     def __init__(
-        self,
-        img_size=224,
-        patch_size=16,
-        in_chans=3,
-        encoder_embed_dim=768,
-        encoder_depth=12,
-        encoder_num_heads=12,
-        decoder_embed_dim=512,
-        decoder_depth=8,
-        decoder_num_heads=16,
-        mlp_ratio=4.0,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6),
-        norm_pix_loss=False,
-        latent_depth=384,
-        hyperprior_depth=192,
-        num_slices=12,
-        num_keep_patches=144,
+            self,
+            img_size=224,
+            patch_size=16,
+            in_chans=3,
+            encoder_embed_dim=768,
+            encoder_depth=12,
+            encoder_num_heads=12,
+            decoder_embed_dim=512,
+            decoder_depth=8,
+            decoder_num_heads=16,
+            mlp_ratio=4.0,
+            norm_layer=partial(nn.LayerNorm, eps=1e-6),
+            norm_pix_loss=False,
+            latent_depth=384,
+            hyperprior_depth=192,
+            num_slices=12,
+            num_keep_patches=144,
     ):
-        super().__init__()
+        super().__init()
 
+        # Model hyperparameters
         self.encoder_embed_dim = encoder_embed_dim
         self.encoder_depth = encoder_depth
         self.encoder_num_heads = encoder_num_heads
         self.decoder_embed_dim = decoder_embed_dim
         self.decoder_depth = decoder_depth
         self.decoder_num_heads = decoder_num_heads
-
         self.latent_depth = latent_depth
         self.hyperprior_depth = hyperprior_depth
         self.num_slices = num_slices
         self.num_keep_patches = num_keep_patches
 
-        # Initialize entropy model
+        # Entropy model
         self.entropy_bottleneck = EntropyBottleneck(hyperprior_depth)
         self.gaussian_conditional = GaussianConditional(None)
         self.max_support_slices = self.num_slices // 2
 
-        # Initialize frozen_stage
-        self.frozen_stages = -1
-
-        # Define Compresion Modules
-
+        # Compression Modules
         # G_a Module
         self.g_a = nn.Sequential(
-            nn.Conv2d(
-                self.encoder_embed_dim,
-                int(
-                    self.decoder_embed_dim
-                    + (self.encoder_embed_dim - self.decoder_embed_dim) * 3 / 4
-                ),
-                kernel_size=1,
-                stride=1,
-                padding=0,
-            ),
+            nn.Conv2d(self.encoder_embed_dim,
+                      int(self.decoder_embed_dim + (self.encoder_embed_dim - self.decoder_embed_dim) * 3 / 4),
+                      kernel_size=1, stride=1, padding=0),
             nn.GELU(),
-            nn.Conv2d(
-                int(
-                    self.decoder_embed_dim
-                    + (self.encoder_embed_dim - self.decoder_embed_dim) * 3 / 4
-                ),
-                int(
-                    self.decoder_embed_dim
-                    + (self.encoder_embed_dim - self.decoder_embed_dim) * 2 / 4
-                ),
-                kernel_size=1,
-                stride=1,
-                padding=0,
-            ),
+            nn.Conv2d(int(self.decoder_embed_dim + (self.encoder_embed_dim - self.decoder_embed_dim) * 3 / 4),
+                      int(self.decoder_embed_dim + (self.encoder_embed_dim - self.decoder_embed_dim) * 2 / 4),
+                      kernel_size=1, stride=1, padding=0),
             nn.GELU(),
-            nn.Conv2d(
-                int(
-                    self.decoder_embed_dim
-                    + (self.encoder_embed_dim - self.decoder_embed_dim) * 2 / 4
-                ),
-                self.decoder_embed_dim,
-                kernel_size=1,
-                stride=1,
-                padding=0,
-            ),
+            nn.Conv2d(int(self.decoder_embed_dim + (self.encoder_embed_dim - self.decoder_embed_dim) * 2 / 4),
+                      self.decoder_embed_dim, kernel_size=1, stride=1, padding=0),
             nn.GELU(),
-            nn.Conv2d(
-                self.decoder_embed_dim,
-                self.latent_depth,
-                kernel_size=1,
-                stride=1,
-                padding=0,
-            ),
+            nn.Conv2d(self.decoder_embed_dim, self.latent_depth, kernel_size=1, stride=1, padding=0),
         )
 
         # G_s Module
         self.g_s = nn.Sequential(
-            nn.ConvTranspose2d(
-                self.latent_depth,
-                self.decoder_embed_dim,
-                kernel_size=1,
-                stride=1,
-                padding=0,
-            ),
+            nn.ConvTranspose2d(self.latent_depth, self.decoder_embed_dim, kernel_size=1, stride=1, padding=0),
             nn.GELU(),
-            nn.ConvTranspose2d(
-                self.decoder_embed_dim,
-                int(
-                    self.decoder_embed_dim
-                    + (self.encoder_embed_dim - self.decoder_embed_dim) * 2 / 4
-                ),
-                kernel_size=1,
-                stride=1,
-                padding=0,
-            ),
+            nn.ConvTranspose2d(self.decoder_embed_dim,
+                               int(self.decoder_embed_dim + (self.encoder_embed_dim - self.decoder_embed_dim) * 2 / 4),
+                               kernel_size=1, stride=1, padding=0),
             nn.GELU(),
-            nn.ConvTranspose2d(
-                int(
-                    self.decoder_embed_dim
-                    + (self.encoder_embed_dim - self.decoder_embed_dim) * 2 / 4
-                ),
-                int(
-                    self.decoder_embed_dim
-                    + (self.encoder_embed_dim - self.decoder_embed_dim) * 3 / 4
-                ),
-                kernel_size=1,
-                stride=1,
-                padding=0,
-            ),
+            nn.ConvTranspose2d(int(self.decoder_embed_dim + (self.encoder_embed_dim - self.decoder_embed_dim) * 2 / 4),
+                               int(self.decoder_embed_dim + (self.encoder_embed_dim - self.decoder_embed_dim) * 3 / 4),
+                               kernel_size=1, stride=1, padding=0),
             nn.GELU(),
-            nn.ConvTranspose2d(
-                int(
-                    self.decoder_embed_dim
-                    + (self.encoder_embed_dim - self.decoder_embed_dim) * 3 / 4
-                ),
-                self.encoder_embed_dim,
-                kernel_size=1,
-                stride=1,
-                padding=0,
-            ),
+            nn.ConvTranspose2d(int(self.decoder_embed_dim + (self.encoder_embed_dim - self.decoder_embed_dim) * 3 / 4),
+                               self.encoder_embed_dim, kernel_size=1, stride=1, padding=0),
         )
 
         # H_a Module
         self.h_a = nn.Sequential(
             conv3x3(self.latent_depth, self.latent_depth, stride=1),
             nn.GELU(),
-            conv3x3(
-                self.latent_depth,
-                int(
-                    self.hyperprior_depth
-                    + (self.latent_depth - self.hyperprior_depth) * 3 / 4
-                ),
-                stride=1,
-            ),
+            conv3x3(self.latent_depth, int(self.hyperprior_depth + (self.latent_depth - self.hyperprior_depth) * 3 / 4),
+                    stride=1),
             nn.GELU(),
-            conv3x3(
-                int(
-                    self.hyperprior_depth
-                    + (self.latent_depth - self.hyperprior_depth) * 3 / 4
-                ),
-                int(
-                    self.hyperprior_depth
-                    + (self.latent_depth - self.hyperprior_depth) * 2 / 4
-                ),
-                stride=2,
-            ),
+            conv3x3(int(self.hyperprior_depth + (self.latent_depth - self.hyperprior_depth) * 3 / 4),
+                    int(self.hyperprior_depth + (self.latent_depth - self.hyperprior_depth) * 2 / 4), stride=2),
             nn.GELU(),
-            conv3x3(
-                int(
-                    self.hyperprior_depth
-                    + (self.latent_depth - self.hyperprior_depth) * 2 / 4
-                ),
-                int(
-                    self.hyperprior_depth
-                    + (self.latent_depth - self.hyperprior_depth) / 4
-                ),
-                stride=1,
-            ),
+            conv3x3(int(self.hyperprior_depth + (self.latent_depth - self.hyperprior_depth) * 2 / 4),
+                    int(self.hyperprior_depth + (self.latent_depth - self.hyperprior_depth) / 4), stride=1),
             nn.GELU(),
-            conv3x3(
-                int(
-                    self.hyperprior_depth
-                    + (self.latent_depth - self.hyperprior_depth) / 4
-                ),
-                self.hyperprior_depth,
-                stride=2,
-            ),
+            conv3x3(int(self.hyperprior_depth + (self.latent_depth - self.hyperprior_depth) / 4),
+                    self.hyperprior_depth, stride=2),
         )
 
         # H_s Module
         self.h_s_mean = nn.Sequential(
-            conv3x3(
-                self.hyperprior_depth,
-                int(
-                    self.hyperprior_depth
-                    + (self.latent_depth - self.hyperprior_depth) / 4
-                ),
-                stride=1,
-            ),
+            conv3x3(self.hyperprior_depth, int(self.hyperprior_depth + (self.latent_depth - self.hyperprior_depth) / 4),
+                    stride=1),
             nn.GELU(),
-            subpel_conv3x3(
-                int(
-                    self.hyperprior_depth
-                    + (self.latent_depth - self.hyperprior_depth) / 4
-                ),
-                int(
-                    self.hyperprior_depth
-                    + (self.latent_depth - self.hyperprior_depth) * 2 / 4
-                ),
-                r=2,
-            ),
+            subpel_conv3x3(int(self.hyperprior_depth + (self.latent_depth - self.hyperprior_depth) / 4),
+                           int(self.hyperprior_depth + (self.latent_depth - self.hyperprior_depth) * 2 / 4), r=2),
             nn.GELU(),
-            conv3x3(
-                int(
-                    self.hyperprior_depth
-                    + (self.latent_depth - self.hyperprior_depth) * 2 / 4
-                ),
-                int(
-                    self.hyperprior_depth
-                    + (self.latent_depth - self.hyperprior_depth) * 3 / 4
-                ),
-                stride=1,
-            ),
+            conv3x3(int(self.hyperprior_depth + (self.latent_depth - self.hyperprior_depth) * 2 / 4),
+                    int(self.hyperprior_depth + (self.latent_depth - self.hyperprior_depth) * 3 / 4), stride=1),
             nn.GELU(),
-            subpel_conv3x3(
-                int(
-                    self.hyperprior_depth
-                    + (self.latent_depth - self.hyperprior_depth) * 3 / 4
-                ),
-                self.latent_depth,
-                r=2,
-            ),
+            subpel_conv3x3(int(self.hyperprior_depth + (self.latent_depth - self.hyperprior_depth) * 3 / 4),
+                           self.latent_depth, r=2),
             nn.GELU(),
             conv3x3(self.latent_depth, self.latent_depth, stride=1),
         )
 
         self.h_s_scale = nn.Sequential(
-            conv3x3(
-                self.hyperprior_depth,
-                int(
-                    self.hyperprior_depth
-                    + (self.latent_depth - self.hyperprior_depth) / 4
-                ),
-                stride=1,
-            ),
+            conv3x3(self.hyperprior_depth, int(self.hyperprior_depth + (self.latent_depth - self.hyperprior_depth) / 4),
+                    stride=1),
             nn.GELU(),
-            subpel_conv3x3(
-                int(
-                    self.hyperprior_depth
-                    + (self.latent_depth - self.hyperprior_depth) / 4
-                ),
-                int(
-                    self.hyperprior_depth
-                    + (self.latent_depth - self.hyperprior_depth) * 2 / 4
-                ),
-                r=2,
-            ),
+            subpel_conv3x3(int(self.hyperprior_depth + (self.latent_depth - self.hyperprior_depth) / 4),
+                           int(self.hyperprior_depth + (self.latent_depth - self.hyperprior_depth) * 2 / 4), r=2),
             nn.GELU(),
-            conv3x3(
-                int(
-                    self.hyperprior_depth
-                    + (self.latent_depth - self.hyperprior_depth) * 2 / 4
-                ),
-                int(
-                    self.hyperprior_depth
-                    + (self.latent_depth - self.hyperprior_depth) * 3 / 4
-                ),
-                stride=1,
-            ),
+            conv3x3(int(self.hyperprior_depth + (self.latent_depth - self.hyperprior_depth) * 2 / 4),
+                    int(self.hyperprior_depth + (self.latent_depth - self.hyperprior_depth) * 3 / 4), stride=1),
             nn.GELU(),
-            subpel_conv3x3(
-                int(
-                    self.hyperprior_depth
-                    + (self.latent_depth - self.hyperprior_depth) * 3 / 4
-                ),
-                self.latent_depth,
-                r=2,
-            ),
+            subpel_conv3x3(int(self.hyperprior_depth + (self.latent_depth - self.hyperprior_depth) * 3 / 4),
+                           self.latent_depth, r=2),
             nn.GELU(),
             conv3x3(self.latent_depth, self.latent_depth, stride=1),
         )
 
         # CC_Transform Module
-        self.cc_transform_mean = nn.ModuleList(
+        self.cc_transform_mean = nn.ModuleList([
             nn.Sequential(
                 nn.Conv2d(
-                    int(
-                        self.latent_depth
-                        + (self.latent_depth // self.num_slices)
-                        * min(i, self.num_slices // 2)
-                    ),
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 + 1)
-                    ),
-                    kernel_size=3,
-                    stride=1,
-                    padding=1,
+                    int(self.latent_depth + (self.latent_depth // self.num_slices) * min(i, self.num_slices // 2)),
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 + 1)),
+                    kernel_size=3, stride=1, padding=1,
                 ),
                 nn.GELU(),
                 nn.Conv2d(
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 + 1)
-                    ),
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 * 3 / 4 + 1)
-                    ),
-                    kernel_size=3,
-                    stride=1,
-                    padding=1,
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 + 1)),
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 * 3 / 4 + 1)),
+                    kernel_size=3, stride=1, padding=1,
                 ),
                 nn.GELU(),
                 nn.Conv2d(
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 * 3 / 4 + 1)
-                    ),
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 * 2 / 4 + 1)
-                    ),
-                    kernel_size=3,
-                    stride=1,
-                    padding=1,
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 * 3 / 4 + 1)),
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 * 2 / 4 + 1)),
+                    kernel_size=3, stride=1, padding=1,
                 ),
                 nn.GELU(),
                 nn.Conv2d(
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 * 2 / 4 + 1)
-                    ),
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 * 1 / 4 + 1)
-                    ),
-                    kernel_size=3,
-                    stride=1,
-                    padding=1,
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 * 2 / 4 + 1)),
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 * 1 / 4 + 1)),
+                    kernel_size=3, stride=1, padding=1,
                 ),
                 nn.GELU(),
                 nn.Conv2d(
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 * 1 / 4 + 1)
-                    ),
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 * 1 / 4 + 1)),
                     int(self.latent_depth // self.num_slices),
-                    kernel_size=3,
-                    stride=1,
-                    padding=1,
+                    kernel_size=3, stride=1, padding=1,
                 ),
-            )
-            for i in range(self.num_slices)
-        )
+            ) for i in range(self.num_slices)
+        ])
 
-        self.cc_transform_scale = nn.ModuleList(
+        self.cc_transform_scale = nn.ModuleList([
             nn.Sequential(
                 nn.Conv2d(
-                    int(
-                        self.latent_depth
-                        + (self.latent_depth // self.num_slices)
-                        * min(i, self.num_slices // 2)
-                    ),
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 + 1)
-                    ),
-                    kernel_size=3,
-                    stride=1,
-                    padding=1,
+                    int(self.latent_depth + (self.latent_depth // self.num_slices) * min(i, self.num_slices // 2)),
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 + 1)),
+                    kernel_size=3, stride=1, padding=1,
                 ),
                 nn.GELU(),
                 nn.Conv2d(
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 + 1)
-                    ),
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 * 3 / 4 + 1)
-                    ),
-                    kernel_size=3,
-                    stride=1,
-                    padding=1,
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 + 1)),
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 * 3 / 4 + 1)),
+                    kernel_size=3, stride=1, padding=1,
                 ),
                 nn.GELU(),
                 nn.Conv2d(
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 * 3 / 4 + 1)
-                    ),
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 * 2 / 4 + 1)
-                    ),
-                    kernel_size=3,
-                    stride=1,
-                    padding=1,
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 * 3 / 4 + 1)),
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 * 2 / 4 + 1)),
+                    kernel_size=3, stride=1, padding=1,
                 ),
                 nn.GELU(),
                 nn.Conv2d(
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 * 2 / 4 + 1)
-                    ),
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 * 1 / 4 + 1)
-                    ),
-                    kernel_size=3,
-                    stride=1,
-                    padding=1,
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 * 2 / 4 + 1)),
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 * 1 / 4 + 1)),
+                    kernel_size=3, stride=1, padding=1,
                 ),
                 nn.GELU(),
                 nn.Conv2d(
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 * 1 / 4 + 1)
-                    ),
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 * 1 / 4 + 1)),
                     int(self.latent_depth // self.num_slices),
-                    kernel_size=3,
-                    stride=1,
-                    padding=1,
+                    kernel_size=3, stride=1, padding=1,
                 ),
-            )
-            for i in range(self.num_slices)
-        )
+            ) for i in range(self.num_slices)
+        ])
 
         # LRP Transform Module
-        self.lrp_transform = nn.ModuleList(
+        self.lrp_transform = nn.ModuleList([
             nn.Sequential(
                 nn.Conv2d(
-                    int(
-                        self.latent_depth
-                        + (self.latent_depth // self.num_slices)
-                        * min(i + 1, self.num_slices // 2 + 1)
-                    ),
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 + 1)
-                    ),
-                    kernel_size=3,
-                    stride=1,
-                    padding=1,
+                    int(self.latent_depth + (self.latent_depth // self.num_slices) * min(i + 1,
+                                                                                         self.num_slices // 2 + 1)),
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 + 1)),
+                    kernel_size=3, stride=1, padding=1,
                 ),
                 nn.GELU(),
                 nn.Conv2d(
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 + 1)
-                    ),
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 * 3 / 4 + 1)
-                    ),
-                    kernel_size=3,
-                    stride=1,
-                    padding=1,
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 + 1)),
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 * 3 / 4 + 1)),
+                    kernel_size=3, stride=1, padding=1,
                 ),
                 nn.GELU(),
                 nn.Conv2d(
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 * 3 / 4 + 1)
-                    ),
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 * 2 / 4 + 1)
-                    ),
-                    kernel_size=3,
-                    stride=1,
-                    padding=1,
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 * 3 / 4 + 1)),
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 * 2 / 4 + 1)),
+                    kernel_size=3, stride=1, padding=1,
                 ),
                 nn.GELU(),
                 nn.Conv2d(
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 * 2 / 4 + 1)
-                    ),
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 * 1 / 4 + 1)
-                    ),
-                    kernel_size=3,
-                    stride=1,
-                    padding=1,
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 * 2 / 4 + 1)),
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 * 1 / 4 + 1)),
+                    kernel_size=3, stride=1, padding=1,
                 ),
                 nn.GELU(),
                 nn.Conv2d(
-                    int(
-                        self.latent_depth
-                        // self.num_slices
-                        * (self.num_slices // 2 * 1 / 4 + 1)
-                    ),
+                    int(self.latent_depth // self.num_slices * (self.num_slices // 2 * 1 / 4 + 1)),
                     int(self.latent_depth // self.num_slices),
-                    kernel_size=3,
-                    stride=1,
-                    padding=1,
+                    kernel_size=3, stride=1, padding=1,
                 ),
-            )
-            for i in range(self.num_slices)
-        )
+            ) for i in range(self.num_slices)
+        ])
 
-        # Initialize frezze stage status
+        # Initialize freeze stage status
         self._freeze_stages()
 
-        # Initialize MAE layers
-
-        # ----------------------------------------------------
-        # Encoder
-
+        # ------------------------------------ Initialize MAE layers ------------------------------------
+        # ------------------ Encoder ------------------
         self.encoder_embed = PatchEmbed(
             img_size, patch_size, in_chans, self.encoder_embed_dim
         )
@@ -570,55 +271,53 @@ class MCM(CompressionModel):
 
         self.cls_token = nn.Parameter(torch.zeros(1, 1, self.encoder_embed_dim))
         self.encoder_pos_embed = nn.Parameter(
-            torch.zeros(1, num_patches + 1, self.encoder_embed_dim), requires_grad=False
-        )  # Fixed sin-cos embeding
+            torch.zeros(1, num_patches + 1, self.encoder_embed_dim),
+            requires_grad=False
+        )  # Fixed sin-cos embedding
 
-        self.encoder_blocks = nn.ModuleList(
-            [
-                Block(
-                    dim=self.encoder_embed_dim,
-                    num_heads=self.encoder_num_heads,
-                    mlp_ratio=mlp_ratio,
-                    qkv_bias=True,
-                    norm_layer=norm_layer,
-                )
-                for _ in range(self.encoder_depth)
-            ]
-        )
-
+        # Define encoder blocks
+        self.encoder_blocks = nn.ModuleList([
+            Block(
+                dim=self.encoder_embed_dim,
+                num_heads=self.encoder_num_heads,
+                mlp_ratio=mlp_ratio,
+                qkv_bias=True,
+                norm_layer=norm_layer,
+            )
+            for _ in range(self.encoder_depth)
+        ])
         self.encoder_norm = norm_layer(self.encoder_embed_dim)
 
-        # ----------------------------------------------------
-
-        # ----------------------------------------------------
-        # Decoder
-
+        # ------------------ Decoder ------------------
         self.decoder_embed = nn.Linear(
             self.encoder_embed_dim, self.decoder_embed_dim, bias=True
         )
+
         self.mask_token = nn.Parameter(torch.zeros(1, 1, self.decoder_embed_dim))
 
         self.decoder_pos_embed = nn.Parameter(
-            torch.zeros(1, num_patches + 1, self.decoder_embed_dim), requires_grad=False
+            torch.zeros(1, num_patches + 1, self.decoder_embed_dim),
+            requires_grad=False
         )  # Fixed sin-cos embedding
-        self.decoder_blocks = nn.ModuleList(
-            [
-                Block(
-                    dim=self.decoder_embed_dim,
-                    num_heads=self.decoder_num_heads,
-                    mlp_ratio=mlp_ratio,
-                    qkv_bias=True,
-                    norm_layer=norm_layer,
-                )
-                for _ in range(self.decoder_depth)
-            ]
-        )
-        self.decoder_norm = norm_layer(self.decoder_embed_dim)
-        self.decoder_pred = nn.Linear(
-            self.decoder_embed_dim, patch_size**2 * in_chans, bias=True
-        )
 
-        # ----------------------------------------------------
+        # Define decoder blocks
+        self.decoder_blocks = nn.ModuleList([
+            Block(
+                dim=self.decoder_embed_dim,
+                num_heads=self.decoder_num_heads,
+                mlp_ratio=mlp_ratio,
+                qkv_bias=True,
+                norm_layer=norm_layer,
+            )
+            for _ in range(self.decoder_depth)
+        ])
+
+        self.decoder_norm = norm_layer(self.decoder_embed_dim)
+
+        self.decoder_pred = nn.Linear(
+            self.decoder_embed_dim, patch_size ** 2 * in_chans, bias=True
+        )
+        # ----------------------------------------------
 
         # Initialize norm_pix_loss
         self.norm_pix_loss = norm_pix_loss
@@ -626,20 +325,22 @@ class MCM(CompressionModel):
         # Initialize weight
         self.initialize_weights()
 
-    # ----------------------------------------------------
     # Initialize the ids shuffle for input images
     def get_ids_shuffle(self, total_score):
         """
-        Get the ids_shuffle of the the feature map (patched image) by using total_score and visual_token
+        Calculate shuffled indices for patch selection based on total_score.
+
+        Args:
+            total_score (numpy.ndarray): Array of scores for patches.
+
+        Returns:
+            ids_shuffle (list): Shuffled indices for patch selection.
         """
         if self.num_keep_patches > len(total_score):
-            raise ValueError(
-                "Number of patches should not be greater than the length of scores"
-            )
+            raise ValueError("Number of patches should not be greater than the length of scores")
 
+        # Sort the scores and calculate percentiles and thresholds
         sorted_scores = np.sort(total_score)
-
-        # Calculate percentiles and thresholds
         percentiles = np.arange(10, 91, 10)
         thresholds = np.percentile(np.unique(sorted_scores), percentiles)
 
@@ -647,12 +348,10 @@ class MCM(CompressionModel):
         categories = np.digitize(sorted_scores, thresholds)
 
         # Calculate group means
-        group_means = np.array(
-            [
-                np.mean(sorted_scores[categories == group])
-                for group in range(len(percentiles) + 1)
-            ]
-        )
+        group_means = np.array([
+            np.mean(sorted_scores[categories == group])
+            for group in range(len(percentiles) + 1)
+        ])
 
         # Keep values from the group with the highest category (categorized_data == 9)
         keep_values = list(sorted_scores[categories == 9])
@@ -669,7 +368,7 @@ class MCM(CompressionModel):
         # Populate high_category_values
         for i, num_to_keep in enumerate(scaled_means):
             start_index = len(sorted_scores[categories == i]) - num_to_keep
-            keep_values.extend(list(sorted_scores[categories == i][int(start_index) :]))
+            keep_values.extend(list(sorted_scores[categories == i][int(start_index):]))
 
         keep_values.append(sorted_scores[0])  # Append the least important patch
         keep_values_frequency = Counter(keep_values)
@@ -677,14 +376,13 @@ class MCM(CompressionModel):
 
         # Create a list of indices
         for value, freq in keep_values_frequency.items():
-            ids_shuffle.extend(list(np.where(total_score == value)[0][:freq]))
+            indices = np.where(total_score == value)[0][:freq]
+            ids_shuffle.extend(list(indices))
 
         remaining_indices = [i for i in range(len(total_score)) if i not in ids_shuffle]
         ids_shuffle.extend(remaining_indices)
 
         return ids_shuffle
-
-    # ----------------------------------------------------
 
     def _freeze_stages(self):
         """
@@ -710,8 +408,8 @@ class MCM(CompressionModel):
         super().load_state_dict(state_dict)
 
     @classmethod
-    def from_state_dict(cls, vis_num, state_dict):
-        net = cls(visual_tokens=vis_num)
+    def from_state_dict(cls, num_keep_patches, state_dict):
+        net = cls(num_keep_patches=num_keep_patches)
         net.load_state_dict(state_dict)
         return net
 
@@ -720,7 +418,7 @@ class MCM(CompressionModel):
         # initialize (and freeze) pos_embed by sin-cos embedding
         pos_embed = get_2d_sincos_pos_embed(
             self.encoder_pos_embed.shape[-1],
-            int(self.encoder_embed.num_patches**0.5),
+            int(self.encoder_embed.num_patches ** 0.5),
             cls_token=True,
         )
         self.encoder_pos_embed.data.copy_(
@@ -729,7 +427,7 @@ class MCM(CompressionModel):
 
         decoder_pos_embed = get_2d_sincos_pos_embed(
             self.decoder_pos_embed.shape[-1],
-            int(self.encoder_embed.num_patches**0.5),
+            int(self.encoder_embed.num_patches ** 0.5),
             cls_token=True,
         )
         self.decoder_pos_embed.data.copy_(
@@ -747,7 +445,8 @@ class MCM(CompressionModel):
         # initialize nn.Linear and nn.LayerNorm
         self.apply(self._init_weights)
 
-    def _init_weights(self, m):
+    @staticmethod
+    def _init_weights(m):
         if isinstance(m, nn.Linear):
             # we use xavier_uniform following official JAX ViT:
             torch.nn.init.xavier_uniform_(m.weight)
@@ -759,44 +458,52 @@ class MCM(CompressionModel):
 
     def patchify(self, imgs):
         """
-        Patchify function convert from a image to a patched feature.
+        Patchify function that converts an image into a patched feature.
 
         Args:
-            imgs (torch.Tensor): Batch of images (N, 3, H, W)
+            imgs (torch.Tensor): Batch of images with shape (N, 3, H, W).
 
         Returns:
-            patched_feature (torch.Tensor): Patched feature (N, L, D) with
-                          N: Batch numbers
-                          L: (H // patch_size) ** 2
-                          D: patch_size ** 2 * 3
+            patched_feature (torch.Tensor): Patched feature with shape (N, L, D).
+                - N: Number of batches
+                - L: Number of patches, calculated as (H // patch_size) ** 2
+                - D: Dimension of each patch, calculated as patch_size ** 2 * 3
         """
-        p = self.encoder_embed.patch_size[0]
-        assert imgs.shape[2] == imgs.shape[3] and imgs.shape[2] % p == 0
+        patch_size = self.encoder_embed.patch_size[0]
+        assert imgs.shape[2] == imgs.shape[3] and imgs.shape[2] % patch_size == 0
 
-        h = w = imgs.shape[2] // p
-        x = imgs.reshape(shape=(imgs.shape[0], 3, h, p, w, p))
+        # Split the images into patches
+        h = w = imgs.shape[2] // patch_size
+        x = imgs.view(imgs.shape[0], 3, h, patch_size, w, patch_size)
+
+        # Rearrange the patches
         x = torch.einsum("nchpwq->nhwpqc", x)
-        patched_feature = x.reshape(shape=(imgs.shape[0], h * w, p**2 * 3))
+
+        # Reshape the patches into the final format
+        patched_feature = x.view(imgs.shape[0], h * w, patch_size ** 2 * 3)
         return patched_feature
 
     def unpatchify(self, patched_feature):
         """
-        Unpatchify function to convert from a patched feature to image (H, W, 3)
-        This function is only used for results after passing the decoder MAE.
+        Unpatchify function to convert from a patched feature to an image (N, 3, H, W).
+        This function is typically used for results after passing through the decoder MAE.
 
         Args:
-            patched_feature (torch.Tensor): Patched feature after decode (N, L, patch_size**2 *3)
+            patched_feature (torch.Tensor): Patched feature after decoding with shape (N, L, patch_size**2 * 3).
 
         Returns:
-            imgs (torch.Tensor): Image (N, 3, H, W)
+            imgs (torch.Tensor): Image with shape (N, 3, H, W).
         """
-        p = self.encoder_embed.patch_size[0]
+        patch_size = self.encoder_embed.patch_size[0]
+
+        # Calculate the dimensions of the output image
         h = w = int(patched_feature.shape[1] ** 0.5)
         assert h * w == patched_feature.shape[1]
 
-        x = patched_feature.reshape(shape=(patched_feature.shape[0], h, w, p, p, 3))
+        # Reshape and rearrange the patched feature to obtain the image
+        x = patched_feature.view(patched_feature.shape[0], h, w, patch_size, patch_size, 3)
         x = torch.einsum("nhwpqc->nchpwq", x)
-        imgs = x.reshape(shape=(x.shape[0], 3, h * p, h * p))
+        imgs = x.view(x.shape[0], 3, h * patch_size, w * patch_size)
         return imgs
 
     def random_masking(self, x, total_scores):
@@ -823,8 +530,7 @@ class MCM(CompressionModel):
             ids_restore (torch.Tensor):  Ids tensor for restore original patched feature.
         """
 
-        # We will generate a tensor IDs shuffle that represents for probability map and produces attention to meaningful patches
-
+        # Generate a tensor `ids_shuffle` to represent the probability map and produce attention to meaningful patches
         ids_shuffle = self.get_ids_shuffle(total_scores)
 
         N, L, D = x.shape  # batch, length, dim
@@ -840,26 +546,34 @@ class MCM(CompressionModel):
 
         return x_remain, ids_restore
 
-    def foward_encoder(self, imgs, total_scores):
+    def forward_encoder(self, imgs, total_scores):
         """
-        Encoder module of MCM model
+        Encoder module of the MCM model.
 
         Args:
-            x (torch.Tensor): Batch-like images (N, H, W, 3)
-            total_scores (torch.Tensor): Probability map [N, L]
+            imgs (torch.Tensor): Batch of images with shape (N, H, W, 3), where
+                - N: Number of batches
+                - H: Height of the images
+                - W: Width of the images
+
+            total_scores (torch.Tensor): Probability map with shape (N, L), where
+                - N: Number of batches
+                - L: Full patches
 
         Returns:
-            x_remain (torch.Tensor): Remain patched image [N, L, D] with
-                                    N: Batch numbers
-                                    L_new: self.num_keep_patches
-                                    D: patch_size ** 2 * 3
+            x_remain (torch.Tensor): Remaining patched image with shape (N, L, D), where
+                - N: Number of batches
+                - L: Number of patches (self.num_keep_patches)
+                - D: Dimension of each patch (patch_size ** 2 * 3)
 
-            ids_restore (torch.Tensor):  Ids tensor for restore original patched feature [N, L]
+            ids_restore (torch.Tensor): Ids tensor for restoring the original patched feature with shape (N, L), where
+                - N: Number of batches
+                - L: Full patches
         """
-        # Embeding the input images to patched images
+        # Embed the input images into patched images
         encoder_imgs = self.encoder_embed(imgs)
 
-        # Add pos_embed w/o cls_token
+        # Add pos_embed without cls_token
         encoder_imgs = encoder_imgs + self.encoder_pos_embed[:, 1:, :]
 
         # Masking: full_length -> num_keep_patches
@@ -880,31 +594,28 @@ class MCM(CompressionModel):
 
     def forward_decoder(self, x_remain, ids_restore):
         """
-        Decoder module of MCM model
+        Decoder module of the MCM model.
 
         Args:
-            x_remain (torch.Tensor): Remain patched image [N, L_new, D] with
-                                    N: Batch numbers
-                                    L_new: self.num_keep_patches
-                                    D: patch_size ** 2 * 3
+            x_remain (torch.Tensor): Remaining patched image with shape (N, L_new, D), where
+                - N: Number of batches
+                - L_new: Number of patches to keep (self.num_keep_patches)
+                - D: Dimension of each patch (patch_size ** 2 * 3)
 
-            ids_restore (torch.Tensor):  Ids tensor for restore original patched feature [N, L] with
-                                    N: Batch numbers
-                                    L: Full patches L=(img_size // patch_size) ** 2
-
+            ids_restore (torch.Tensor): Ids tensor for restoring the original patched feature with shape (N, L), where
+                - N: Number of batches
+                - L: Full patches (L = (img_size // patch_size) ** 2)
 
         Returns:
-            patched_imgs (torch.Tensor): Patched reconstruction image
+            patched_imgs (torch.Tensor): Patched reconstruction image with shape (N, L_new, D).
         """
         # Decoder embed tokens
-        x_decode = self.decoder_embed(
-            x_remain
-        )  # Covnert [N, 1 + self.num_keep_patches, D] -> [N, 1 + self.num_keep_patches, self.decoder_embed_dim]
+        x_decode = self.decoder_embed(x_remain)  # Convert [N, L_new, D] to [N, L_new, self.decoder_embed_dim]
 
-        # Append mask tokens to sequence
+        # Append mask tokens to the sequence
         mask_tokens = self.mask_token.repeat(
             x_decode.shape[0], ids_restore.shape[1] + 1 - x_decode.shape[1], 1
-        )  # Convert [N, L - self.num_keep_patches, self.decoder_embed_dim] into [N, L - self.num_keep_patches]
+        )  # Convert [N, L - self.num_keep_patches, self.decoder_embed_dim] to [N, L - self.num_keep_patches]
 
         x_ = torch.cat([x_decode[:, 1:, :], mask_tokens], dim=1)  # Remove cls_tokens
 
@@ -912,7 +623,7 @@ class MCM(CompressionModel):
             x_, dim=1, index=ids_restore.unsqueeze(-1).repeat(1, 1, x_decode.shape[2])
         )  # Unshuffle corresponding to ids_restore
 
-        x = torch.cat([x_decode[:, :1, :], x_], dim=1)  # Append cls token [N, L + 1, D]
+        x = torch.cat([x_decode[:, :1, :], x_], dim=1)  # Append cls token [N, L_new + 1, D]
 
         # Add position embedding
         x = x + self.decoder_pos_embed
@@ -970,16 +681,10 @@ class MCM(CompressionModel):
         x_remain, ids_restore = self.foward_encoder(imgs, total_scores)
 
         # LIC
-        y = (
-            x_remain.view(
-                -1,
-                int(self.num_keep_patches**0.5),
-                int(self.num_keep_patches**0.5),
-                self.encoder_embed_dim,
-            )
-            .permute(0, 3, 1, 2)
-            .contiguous()
-        )
+        y = (x_remain.view(-1,
+                           int(self.num_keep_patches ** 0.5),
+                           int(self.num_keep_patches ** 0.5),
+                           self.encoder_embed_dim).permute(0, 3, 1, 2).contiguous())
 
         # Apply G_a module
         y = self.g_a(y).float()
@@ -1003,11 +708,9 @@ class MCM(CompressionModel):
         y_likelihoods = []
 
         for slice_index, y_slice in enumerate(y_slices):
-            support_slices = (
-                y_hat_slices
-                if self.max_support_slices < 0
-                else y_hat_slices[: self.max_support_slices]
-            )
+            support_slices = (y_hat_slices
+                              if self.max_support_slices < 0
+                              else y_hat_slices[: self.max_support_slices])
 
             # Calculate mean
             mean_support = torch.cat([latent_means] + support_slices, dim=1)
@@ -1037,11 +740,8 @@ class MCM(CompressionModel):
         y_likelihood = torch.cat(y_likelihoods, dim=1)
 
         y_hat = self.g_s(y_hat)
-        y_hat = (
-            y_hat.permute(0, 2, 3, 1)
-            .contiguous()
-            .view(-1, self.num_keep_patches, self.encoder_embed_dim)
-        )
+        y_hat = (y_hat.permute(0, 2, 3, 1).contiguous()
+                 .view(-1, self.num_keep_patches, self.encoder_embed_dim))
 
         # Decoder
         preds = self.forward_decoder(y_hat, ids_restore).float()
@@ -1057,23 +757,18 @@ class MCM(CompressionModel):
     def compress(self, imgs, total_scores):
         if next(self.parameters()).device != torch.device("cpu"):
             warnings.warn(
-                "Inference on GPU is not recommended for autoregressive models. The entropy coder is run sequentially on GPU"
+                "Inference on GPU is not recommended for autoregressive models. The entropy coder is run sequentially "
+                "on GPU "
             )
 
         # Encoder MCM
         x_remain, ids_restore = self.foward_encoder(imgs, total_scores)
 
         # LIC
-        y = (
-            x_remain.view(
-                -1,
-                int(self.num_keep_patches**0.5),
-                int(self.num_keep_patches**0.5),
-                self.encoder_embed_dim,
-            )
-            .permute(0, 3, 1, 2)
-            .contiguous()
-        )
+        y = (x_remain.view(-1,
+                           int(self.num_keep_patches ** 0.5),
+                           int(self.num_keep_patches ** 0.5),
+                           self.encoder_embed_dim).permute(0, 3, 1, 2).contiguous())
 
         # Apply G_a module
         y = self.g_a(y).float()
@@ -1106,11 +801,9 @@ class MCM(CompressionModel):
         indexes_list = []
 
         for slice_index, y_slice in enumerate(y_slices):
-            support_slices = (
-                y_hat_slices
-                if self.max_support_slices < 0
-                else y_hat_slices[: self.max_support_slices]
-            )
+            support_slices = (y_hat_slices
+                              if self.max_support_slices < 0
+                              else y_hat_slices[: self.max_support_slices])
 
             # Calculate mean
             mean_support = torch.cat([latent_means] + support_slices, dim=1)
@@ -1175,14 +868,10 @@ class MCM(CompressionModel):
 
         # Decompress using slices
         for slice_index in range(self.num_slices):
-        # for slice_index in range(3):
-
-            
-            support_slices = (
-                y_hat_slices
-                if self.max_support_slices < 0
-                else y_hat_slices[: self.max_support_slices]
-            )
+            # for slice_index in range(3):
+            support_slices = (y_hat_slices
+                              if self.max_support_slices < 0
+                              else y_hat_slices[: self.max_support_slices])
 
             # Calculate mean
             mean_support = torch.cat([latent_means] + support_slices, dim=1)
@@ -1197,7 +886,6 @@ class MCM(CompressionModel):
             # Index
             index = self.gaussian_conditional.build_indexes(sigma)
 
-
             # Revert string indices
             rv = decoder.decode_stream(
                 index.reshape(-1).tolist(), cdfs, cdf_lengths, offsets
@@ -1205,14 +893,12 @@ class MCM(CompressionModel):
             rv = torch.Tensor(rv).reshape(1, -1, y_shape[0], y_shape[1])
             y_hat_slice = self.gaussian_conditional.dequantize(rv, mu)
 
-
             # Lrp transform
             lrp_support = torch.cat([mean_support, y_hat_slice], dim=1)
             lrp = self.lrp_transform[slice_index](lrp_support)
             lrp = 0.5 * torch.tanh(lrp)
             y_hat_slice += lrp
             y_hat_slices.append(y_hat_slice)
-
 
         y_hat = torch.cat(y_hat_slices, dim=1)
 
