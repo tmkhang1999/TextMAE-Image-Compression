@@ -17,7 +17,8 @@ class NativeScaler:
         if update_grad:
             if clip_grad is not None:
                 assert parameters is not None
-                self._scaler.unscale_(optimizer)  # unscale the gradients of optimizes assigned params in-place
+                # unscale the gradients of optimizes assigned params in-place
+                self._scaler.unscale_(optimizer)
                 norm = torch.nn.utils.clip_grad_norm_(parameters, clip_grad)
             else:
                 self._scaler.unscale_(optimizer)
@@ -44,7 +45,8 @@ def get_grad_norm_(parameters, norm_type: float = 2.0) -> torch.Tensor:
         return torch.tensor(0.)
     device = parameters[0].grad.device
     if norm_type == inf:
-        total_norm = max(p.grad.detach().abs().max().to(device) for p in parameters)
+        total_norm = max(p.grad.detach().abs().max().to(device)
+                         for p in parameters)
     else:
         total_norm = torch.norm(torch.stack([torch.norm(p.grad.detach(), norm_type).to(device) for p in parameters]),
                                 norm_type)
@@ -96,7 +98,8 @@ def get_world_size():
 def load_model(args, model, optimizer, aux_optimizer, loss_scaler):
     if args.resume:
         if args.resume.startswith('https'):
-            checkpoint = torch.hub.load_state_dict_from_url(args.resume, map_location='cpu', check_hash=True)
+            checkpoint = torch.hub.load_state_dict_from_url(
+                args.resume, map_location='cpu', check_hash=True)
         else:
             checkpoint = torch.load(args.resume, map_location='cpu')
 
@@ -134,7 +137,8 @@ def save_model(args, epoch, model, optimizer, aux_optimizer, loss_scaler):
             save_on_master(to_save, checkpoint_path)
     else:
         client_state = {'epoch': epoch}
-        model.save_checkpoint(save_dir=args.output_dir, tag="checkpoint-%s" % epoch_name, client_state=client_state)
+        model.save_checkpoint(save_dir=args.output_dir, tag="checkpoint-%s" %
+                              epoch_name, client_state=client_state)
 
 
 def save_on_master(*args, **kwargs):
@@ -149,10 +153,12 @@ def is_main_process():
 def configure_optimizers(mcm, args):
     """Return two optimizers"""
     # MAE
-    parameters = {n for n, p in mcm.named_parameters() if not n.endswith(".quantiles") and p.requires_grad}
+    parameters = {n for n, p in mcm.named_parameters(
+    ) if not n.endswith(".quantiles") and p.requires_grad}
 
     # LIC
-    aux_parameters = {n for n, p in mcm.named_parameters() if n.endswith(".quantiles") and p.requires_grad}
+    aux_parameters = {n for n, p in mcm.named_parameters(
+    ) if n.endswith(".quantiles") and p.requires_grad}
 
     params_dict = dict(mcm.named_parameters())
     inter_params = parameters & aux_parameters

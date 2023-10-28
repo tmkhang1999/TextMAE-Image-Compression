@@ -4,7 +4,7 @@ import numpy as np
 
 # Check if need to continue divide
 def Division_Judge(img, h0, w0, h, w):
-    area = img[h0 : h0 + h, w0 : w0 + w]
+    area = img[h0: h0 + h, w0: w0 + w]
     mean = np.mean(area)
     std = np.std(area, ddof=1)
 
@@ -39,7 +39,8 @@ def Recursion(img, h0, w0, h, w):
         Recursion(img, h0, w0, int(h / 2), int(w / 2))
         Recursion(img, h0, w0 + int(w / 2), int(h / 2), int(w / 2))
         Recursion(img, h0 + int(h / 2), w0, int(h / 2), int(w / 2))
-        Recursion(img, h0 + int(h / 2), w0 + int(w / 2), int(h / 2), int(w / 2))
+        Recursion(img, h0 + int(h / 2), w0 +
+                  int(w / 2), int(h / 2), int(w / 2))
     else:
         Merge(img, h0, w0, h, w)
 

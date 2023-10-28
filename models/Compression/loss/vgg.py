@@ -75,7 +75,8 @@ def feature_network(net_type="vgg16", requires_grad=False):
     if net_type == "vgg16":
         feature_network = Vgg16(requires_grad=requires_grad)
     else:
-        raise NotImplementedError("Feature net name [%s] is not recognized" % net_type)
+        raise NotImplementedError(
+            "Feature net name [%s] is not recognized" % net_type)
 
     feature_network.cpu()
 

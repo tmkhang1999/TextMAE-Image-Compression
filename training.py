@@ -25,40 +25,53 @@ def save_checkpoint(state, is_best, filename):
 
 
 def get_args_parser():
-    parser = argparse.ArgumentParser('MAE fine-tuning for image classification', add_help=False)
+    parser = argparse.ArgumentParser(
+        'MAE fine-tuning for image classification', add_help=False)
 
     # Dataset
-    parser.add_argument("-d", "--dataset", type=str, required=True, help="Training dataset path")
+    parser.add_argument("-d", "--dataset", type=str,
+                        required=True, help="Training dataset path")
 
     # Training Options
-    parser.add_argument("-e", "--epochs", default=100, type=int, help="Number of epochs (default: %(default)s)")
+    parser.add_argument("-e", "--epochs", default=100, type=int,
+                        help="Number of epochs (default: %(default)s)")
     parser.add_argument("--start_epoch", default=0, type=int)
     parser.add_argument("--accum_iter", default=1, type=int,
                         help="Accumulate gradient iterations for effective batch size")
-    parser.add_argument("--learning-rate", "-lr", default=1e-4, type=float, help="Learning rate (default: %(default)s)")
+    parser.add_argument("--learning-rate", "-lr", default=1e-4,
+                        type=float, help="Learning rate (default: %(default)s)")
     parser.add_argument("--lambda", dest="lmbda", type=float, default=1e-4,
                         help="Bit-rate distortion parameter (default: %(default)s)")
-    parser.add_argument("--batch_size", type=int, default=16, help="Batch size (default: %(default)s)")
-    parser.add_argument("--test-batch-size", type=int, default=8, help="Test batch size (default: %(default)s)")
+    parser.add_argument("--batch_size", type=int, default=16,
+                        help="Batch size (default: %(default)s)")
+    parser.add_argument("--test-batch-size", type=int, default=8,
+                        help="Test batch size (default: %(default)s)")
     parser.add_argument("--aux-learning-rate", default=1e-4, type=float,
                         help="Auxiliary loss learning rate (default: %(default)s)")
 
     # Miscellaneous Options
     parser.add_argument("--cuda", action="store_true", help="Use cuda")
-    parser.add_argument("--save", action="store_true", default=True, help="Save model to disk")
-    parser.add_argument("--save_path", type=str, default="ckpt/model.pth.tar", help="Where to Save model")
-    parser.add_argument("--seed", default=0, type=int, help="Set random seed for reproducibility")
+    parser.add_argument("--save", action="store_true",
+                        default=True, help="Save model to disk")
+    parser.add_argument("--save_path", type=str,
+                        default="ckpt/model.pth.tar", help="Where to Save model")
+    parser.add_argument("--seed", default=0, type=int,
+                        help="Set random seed for reproducibility")
     parser.add_argument("--clip_max_norm", default=1.0, type=float,
                         help="Gradient clipping max norm (default: %(default)s")
 
     # Checkpoints and Logging
-    parser.add_argument("--checkpoint", type=str, default='', help="Path to a checkpoint")
+    parser.add_argument("--checkpoint", type=str,
+                        default='', help="Path to a checkpoint")
     parser.add_argument('--resume', default='', help='Resume from checkpoint')
-    parser.add_argument('--output_dir', default='', help='Path where to save, empty for no saving')
-    parser.add_argument('--log_dir', default='', help='Path where to store TensorBoard logs')
+    parser.add_argument('--output_dir', default='',
+                        help='Path where to save, empty for no saving')
+    parser.add_argument('--log_dir', default='',
+                        help='Path where to store TensorBoard logs')
 
     # Hardware and Data Loading Options
-    parser.add_argument('--device', default='cuda', help='Device to use for training/testing')
+    parser.add_argument('--device', default='cuda',
+                        help='Device to use for training/testing')
     parser.add_argument('--num_workers', default=1, type=int)
     parser.add_argument('--pin_mem', action='store_true',
                         help='Pin CPU memory in DataLoader for more efficient transfer to GPU')
@@ -66,7 +79,8 @@ def get_args_parser():
     parser.set_defaults(pin_mem=True)
 
     # Additional Options
-    parser.add_argument('--num_keep_patches', type=int, default=144, help='Number of keep patches to input the model')
+    parser.add_argument('--num_keep_patches', type=int, default=144,
+                        help='Number of keep patches to input the model')
 
     return parser
 
@@ -90,7 +104,8 @@ def main(args):
     test_size = dataset_size - train_size
 
     # Split the dataset into training and testing subsets
-    train_dataset, test_dataset = random_split(custom_dataset, [train_size, test_size])
+    train_dataset, test_dataset = random_split(
+        custom_dataset, [train_size, test_size])
 
     # Setting up data samplers
     num_tasks = misc.get_world_size()  # GPU's RAM
@@ -150,7 +165,8 @@ def main(args):
     mcm.to(device)
     loss_scaler = misc.NativeScaler()
     optimizer, aux_optimizer = misc.configure_optimizers(mcm, args)
-    misc.load_model(args=args, model=mcm, optimizer=optimizer, aux_optimizer=aux_optimizer, loss_scaler=loss_scaler)
+    misc.load_model(args=args, model=mcm, optimizer=optimizer,
+                    aux_optimizer=aux_optimizer, loss_scaler=loss_scaler)
 
     criterion = rd_loss.RateDistortionLoss(lmbda=args.lmbda)
 

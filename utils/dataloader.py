@@ -6,7 +6,8 @@ from utils.dataset_paths import get_dataset_path
 from utils.distribution import cal_patch_score
 from utils.map import Division_Merge_Segmented, laplacian
 
-__all__ = ["CreateImageDataset", "get_image_dataset"]  # Fix typo in the export name
+# Fix typo in the export name
+__all__ = ["CreateImageDataset", "get_image_dataset"]
 
 
 class CreateImageDataset(Dataset):
@@ -76,7 +77,8 @@ def get_image_dataset(name: str, transform_cfg: dict = None) -> Dataset:
             transforms.Resize(224),
             *transform,
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[
+                                 0.229, 0.224, 0.225]),
         ]
     )
 

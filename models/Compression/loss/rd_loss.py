@@ -23,5 +23,6 @@ class RateDistortionLoss(nn.Module):
         out["vgg_loss"] = output["loss"][2]
 
         # gather
-        out["loss"] = self.lmbda * (0.25 * out["ssim_loss"] + 10 * out["L1_loss"] + 0.1 * out["vgg_loss"]) + out["bpp_loss"]
+        out["loss"] = self.lmbda * (0.25 * out["ssim_loss"] + 10 *
+                                    out["L1_loss"] + 0.1 * out["vgg_loss"]) + out["bpp_loss"]
         return out

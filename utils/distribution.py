@@ -8,7 +8,7 @@ def cal_patch_score(img, crop_sz=16, step=16):
     w_space = np.arange(0, w - crop_sz + 1, step)
 
     patch_scores = [
-        int(img[x : x + crop_sz, y : y + crop_sz].mean())
+        int(img[x: x + crop_sz, y: y + crop_sz].mean())
         for x in h_space
         for y in w_space
     ]
