@@ -737,7 +737,7 @@ class MCM(CompressionModel):
         z_tmp = z - z_offset
         z_hat = quantize_ste(z_tmp) + z_offset
 
-        # Apply h_s module
+        # Apply H_s module
         latent_scales = self.h_s_scale(z_hat)
         latent_means = self.h_s_mean(z_hat)
 
@@ -779,6 +779,7 @@ class MCM(CompressionModel):
         y_hat = torch.cat(y_hat_slices, dim=1)
         y_likelihood = torch.cat(y_likelihoods, dim=1)
 
+        # Apply G_s module
         y_hat = self.g_s(y_hat)
         y_hat = (y_hat.permute(0, 2, 3, 1).contiguous()
                  .view(-1, self.num_keep_patches, self.encoder_embed_dim))
@@ -819,7 +820,7 @@ class MCM(CompressionModel):
         z_strings = self.entropy_bottleneck.compress(z)
         z_hat = self.entropy_bottleneck.decompress(z_strings, z.size()[-2:])
 
-        # Apply h_s module
+        # Apply H_s module
         latent_scales = self.h_s_scale(z_hat)
         latent_means = self.h_s_mean(z_hat)
 
