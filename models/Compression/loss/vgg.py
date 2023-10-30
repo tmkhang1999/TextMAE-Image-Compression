@@ -2,7 +2,7 @@ import torch.nn as nn
 from torchvision import models
 from collections import namedtuple
 
-from models.Compression.common.misc import de_normalize, normalize_batch
+from models.Compression.common.image_utils import de_normalize, normalize_batch
 
 
 # feature loss network

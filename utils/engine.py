@@ -1,10 +1,9 @@
 import datetime
 import torch
-import util.misc as misc
-
 
 class AverageMeter:
     """Compute running average."""
+
     def __init__(self):
         self.val = float(0.)
         self.avg = float(0.)
@@ -24,7 +23,8 @@ class AverageMeter:
         self.avg = self.sum / self.count
 
 
-def train_one_epoch(model, criterion, train_dataloader, optimizer, aux_optimizer, epoch, loss_scaler, clip_max_norm, writer, args):
+def train_one_epoch(model, criterion, train_dataloader, optimizer, aux_optimizer, epoch, loss_scaler, clip_max_norm,
+                    writer, args):
     """
     Train the model for one epoch.
 
@@ -65,11 +65,11 @@ def train_one_epoch(model, criterion, train_dataloader, optimizer, aux_optimizer
     # Calculate the runtime
     t0 = datetime.datetime.now()
 
-    for i, (samples, t_scores, s_scores) in enumerate(metric_logger.log_every(train_dataloader, print_freq, header)):
+    for i, (samples, total_scores) in enumerate(metric_logger.log_every(train_dataloader, print_freq, header)):
         total_steps += samples.shape[0]
         samples = samples.to(device)
 
-        out_net = model(samples, t_scores, s_scores)
+        out_net = model(samples, total_scores)
 
         out_criterion = criterion(out_net, samples)
         out_criterion['loss'] /= accum_iter

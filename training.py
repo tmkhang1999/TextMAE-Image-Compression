@@ -10,8 +10,7 @@ from torch.utils.data import DataLoader, random_split
 from torch.utils.tensorboard import SummaryWriter
 
 from models.Compression.MCM import MCM
-from models.Compression.common import misc
-from models.Compression.common.pos_embed import interpolate_pos_embed
+from models.Compression.common import scaler, distributed, model_utils, pos_embed
 from models.Compression.loss import rd_loss
 from utils.dataloader import get_image_dataset
 from utils.engine import train_one_epoch, test_epoch
@@ -91,7 +90,7 @@ def main(args):
 
     # Set up device and random seed
     device = torch.device(args.device)
-    seed = args.seed + misc.get_rank()
+    seed = args.seed + distributed.get_rank()
     torch.manual_seed(seed)
     np.random.seed(seed)
 
@@ -108,8 +107,8 @@ def main(args):
         custom_dataset, [train_size, test_size])
 
     # Setting up data samplers
-    num_tasks = misc.get_world_size()  # GPU's RAM
-    global_rank = misc.get_rank()  # GPU
+    num_tasks = distributed.get_world_size()  # GPU's RAM
+    global_rank = distributed.get_rank()  # GPU
     sampler_train = torch.utils.data.DistributedSampler(
         train_dataset,
         num_replicas=num_tasks,
@@ -158,15 +157,15 @@ def main(args):
         #         del checkpoint_model[k]
 
         # interpolate position embedding
-        interpolate_pos_embed(mcm, checkpoint_model)
+        pos_embed.interpolate_pos_embed(mcm, checkpoint_model)
         msg = mcm.load_state_dict(checkpoint_model)
         print(msg)
 
     mcm.to(device)
-    loss_scaler = misc.NativeScaler()
-    optimizer, aux_optimizer = misc.configure_optimizers(mcm, args)
-    misc.load_model(args=args, model=mcm, optimizer=optimizer,
-                    aux_optimizer=aux_optimizer, loss_scaler=loss_scaler)
+    loss_scaler = scaler.NativeScaler()
+    optimizer, aux_optimizer = model_utils.configure_optimizers(mcm, args)
+    model_utils.load_model(args=args, model=mcm, optimizer=optimizer,
+                           aux_optimizer=aux_optimizer, loss_scaler=loss_scaler)
 
     criterion = rd_loss.RateDistortionLoss(lmbda=args.lmbda)
 
@@ -177,8 +176,8 @@ def main(args):
         test_epoch(epoch, test_dataloader, mcm, criterion)
 
         if args.output_dir:
-            misc.save_model(args=args, epoch=epoch, model=mcm, optimizer=optimizer, aux_optimizer=aux_optimizer,
-                            loss_scaler=loss_scaler)
+            model_utils.save_model(args=args, epoch=epoch, model=mcm, optimizer=optimizer, aux_optimizer=aux_optimizer,
+                                   loss_scaler=loss_scaler)
 
 
 if __name__ == "__main__":
