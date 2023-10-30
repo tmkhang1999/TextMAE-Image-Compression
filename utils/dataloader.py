@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import torch
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
@@ -45,6 +46,8 @@ def calculate_patch_score(img):
     t_score = cal_patch_score(t_map)
 
     total_score = t_score * s_score
+    total_score = (total_score - total_score.min()) / (total_score.max() - total_score.min())
+    total_score = torch.tensor(total_score, dtype=torch.float32)
 
     return total_score
 
