@@ -366,7 +366,7 @@ class MCM(CompressionModel):
         Calculate shuffled indices for patch selection based on total_score.
 
         Args:
-            total_scores (numpy.ndarray): Array of scores for patches.
+            total_scores (torch.Tensor): Probability map [N, L]
 
         Returns:
             ids_shuffle (list): Shuffled indices for patch selection.
@@ -408,7 +408,7 @@ class MCM(CompressionModel):
 
             # Create a list of indices
             for value, freq in keep_values_frequency.items():
-                ids_shuffle.extend(torch.nonzero(total_score == value).squeeze(dim=0)[:freq].tolist())
+                ids_shuffle.extend(torch.nonzero(total_score == value).view(1, -1).squeeze(dim=0)[:freq].tolist())
 
             remaining_indices = [i for i in range(len(total_score)) if i not in ids_shuffle]
             ids_shuffle.extend(remaining_indices)
