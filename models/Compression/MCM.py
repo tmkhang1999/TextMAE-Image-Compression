@@ -1,18 +1,21 @@
-from models.Compression.common.pos_embed import get_2d_sincos_pos_embed
-from models.Compression.loss.vgg import cal_features_loss
-from compressai.ops import quantize_ste
-from compressai.entropy_models import EntropyBottleneck, GaussianConditional
-from compressai.layers import conv3x3, subpel_conv3x3
-from compressai.ans import BufferedRansEncoder, RansDecoder
-from compressai.models import CompressionModel
-from timm.models.vision_transformer import PatchEmbed, Block
-from pytorch_msssim import SSIM
-import torch.nn as nn
-import torch
-import numpy as np
+import warnings
 from collections import Counter
 from functools import partial
-import warnings
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from compressai.ans import BufferedRansEncoder, RansDecoder
+from compressai.entropy_models import EntropyBottleneck, GaussianConditional
+from compressai.layers import conv3x3, subpel_conv3x3
+from compressai.models import CompressionModel
+from compressai.ops import quantize_ste
+from pytorch_msssim import SSIM
+from timm.models.vision_transformer import PatchEmbed, Block
+
+from models.Compression.common.pos_embed import get_2d_sincos_pos_embed
+from models.Compression.loss.vgg import cal_features_loss
+
 warnings.filterwarnings("ignore")
 
 
@@ -358,67 +361,60 @@ class MCM(CompressionModel):
         self.initialize_weights()
 
     # Initialize the ids shuffle for input images
-    def get_ids_shuffle(self, total_score):
+    def get_ids_shuffle(self, total_scores):
         """
         Calculate shuffled indices for patch selection based on total_score.
 
         Args:
-            total_score (numpy.ndarray): Array of scores for patches.
+            total_scores (numpy.ndarray): Array of scores for patches.
 
         Returns:
             ids_shuffle (list): Shuffled indices for patch selection.
         """
-        if self.num_keep_patches > len(total_score):
-            raise ValueError(
-                "Number of patches should not be greater than the length of scores")
+        if self.num_keep_patches > total_scores.shape[1]:
+            raise ValueError("Number of patches should not be greater than the length of scores")
 
-        # Sort the scores and calculate percentiles and thresholds
-        sorted_scores = np.sort(total_score)
-        percentiles = np.arange(10, 91, 10)
-        thresholds = np.percentile(np.unique(sorted_scores), percentiles)
+        shuffled_indices_list = []  # List to store shuffled indices for each total_score
+        for total_score in total_scores:
+            # Calculate percentiles and thresholds
+            percentiles = torch.arange(0.1, 0.91, 0.1, dtype=torch.float32)
+            thresholds = torch.quantile(total_score.unique(), percentiles, dim=0)
 
-        # Categorize data into groups
-        categories = np.digitize(sorted_scores, thresholds)
+            # Categorize data into groups
+            categories = torch.bucketize(total_score, thresholds)
 
-        # Calculate group means
-        group_means = np.array([
-            np.mean(sorted_scores[categories == group])
-            for group in range(len(percentiles) + 1)
-        ])
+            # Calculate group means
+            group_means = torch.tensor([
+                total_score[categories == group].mean()
+                for group in range(len(percentiles) + 1)
+            ], dtype=torch.float32)
 
-        # Keep values from the group with the highest category (categorized_data == 9)
-        keep_values = list(sorted_scores[categories == 9])
+            # Keep values from the group with the highest category (categorized_data == 9)
+            keep_values = total_score[categories == 9].tolist()
 
-        # Apply softmax to group means for other groups
-        def softmax(x):
-            e_x = np.exp(x - np.max(x))
-            return e_x / e_x.sum()
+            # Apply softmax to group means for other groups
+            softmaxed_means = F.softmax(group_means[:-1], dim=0)  # Exclude the last group
+            new_target = self.num_keep_patches - len(keep_values)
+            scaled_means = torch.round(softmaxed_means * new_target).int()
 
-        softmaxed_means = softmax(group_means[:-1])  # Exclude the last group
-        new_target = self.num_keep_patches - len(keep_values)
-        scaled_means = np.round(softmaxed_means * new_target)
+            # Populate high_category_values
+            for i, num_to_keep in enumerate(scaled_means):
+                group_score, _ = torch.sort(total_score[categories == i])
+                start_index = len(group_score) - num_to_keep
+                keep_values.extend(group_score[int(start_index):].tolist())
 
-        # Populate high_category_values
-        for i, num_to_keep in enumerate(scaled_means):
-            start_index = len(sorted_scores[categories == i]) - num_to_keep
-            keep_values.extend(
-                list(sorted_scores[categories == i][int(start_index):]))
+            keep_values_frequency = Counter(keep_values)
+            ids_shuffle = []
 
-        # Append the least important patch
-        keep_values.append(sorted_scores[0])
-        keep_values_frequency = Counter(keep_values)
-        ids_shuffle = []
+            # Create a list of indices
+            for value, freq in keep_values_frequency.items():
+                ids_shuffle.extend(torch.nonzero(total_score == value).squeeze(dim=0)[:freq].tolist())
 
-        # Create a list of indices
-        for value, freq in keep_values_frequency.items():
-            indices = np.where(total_score == value)[0][:freq]
-            ids_shuffle.extend(list(indices))
+            remaining_indices = [i for i in range(len(total_score)) if i not in ids_shuffle]
+            ids_shuffle.extend(remaining_indices)
+            shuffled_indices_list.append(ids_shuffle)
 
-        remaining_indices = [i for i in range(
-            len(total_score)) if i not in ids_shuffle]
-        ids_shuffle.extend(remaining_indices)
-
-        return ids_shuffle
+        return torch.tensor(shuffled_indices_list)
 
     def _freeze_stages(self):
         """
