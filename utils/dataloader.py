@@ -1,8 +1,9 @@
-from PIL import Image
 from pathlib import Path
+
+from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
-from utils.dataset_paths import get_dataset_path
+
 from utils.distribution import cal_patch_score
 from utils.map import Division_Merge_Segmented, laplacian
 
@@ -48,12 +49,12 @@ def calculate_patch_score(img):
     return total_score
 
 
-def get_image_dataset(name: str, transform_cfg: dict = None) -> Dataset:
+def get_image_dataset(path: str, transform_cfg: dict = None) -> Dataset:
     """
     Get an image dataset.
 
     Args:
-        name (str) : Dataset name.
+        path (str) : Dataset path.
         transform_cfg (dict, optional): Dictionary of transformation options.
     """
     transform = []
@@ -83,6 +84,6 @@ def get_image_dataset(name: str, transform_cfg: dict = None) -> Dataset:
     )
 
     dataset = CreateImageDataset(
-        dataset_path=get_dataset_path(name), transform=transform
+        dataset_path=path, transform=transform
     )
     return dataset
