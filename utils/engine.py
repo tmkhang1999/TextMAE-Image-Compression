@@ -1,5 +1,9 @@
 import datetime
+
 import torch
+
+from models.Compression.common import distributed, logger
+
 
 class AverageMeter:
     """Compute running average."""
@@ -47,8 +51,8 @@ def train_one_epoch(model, criterion, train_dataloader, optimizer, aux_optimizer
     # Initialize variables and set the model to training mode
     total_steps = 0
     model.train()
-    metric_logger = misc.MetricLogger(delimiter="  ")
-    metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
+    metric_logger = logger.MetricLogger(delimiter="  ")
+    metric_logger.add_meter('lr', logger.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 20
 
@@ -111,12 +115,12 @@ def train_one_epoch(model, criterion, train_dataloader, optimizer, aux_optimizer
 
         metric_logger.update(lr=max_lr)
 
-        loss_value_reduce = misc.all_reduce_mean(loss_value)
-        L1_loss_value_reduce = misc.all_reduce_mean(L1_loss_value)
-        ssim_loss_value_reduce = misc.all_reduce_mean(ssim_loss_value)
-        vgg_loss_value_reduce = misc.all_reduce_mean(vgg_loss_value)
-        bpp_loss_value_reduce = misc.all_reduce_mean(bpp_loss_value)
-        aux_loss_value_reduce = misc.all_reduce_mean(aux_loss_value)
+        loss_value_reduce = distributed.all_reduce_mean(loss_value)
+        L1_loss_value_reduce = distributed.all_reduce_mean(L1_loss_value)
+        ssim_loss_value_reduce = distributed.all_reduce_mean(ssim_loss_value)
+        vgg_loss_value_reduce = distributed.all_reduce_mean(vgg_loss_value)
+        bpp_loss_value_reduce = distributed.all_reduce_mean(bpp_loss_value)
+        aux_loss_value_reduce = distributed.all_reduce_mean(aux_loss_value)
 
         if writer is not None and (i + 1) % accum_iter == 0:
             # Log metrics to TensorBoard
@@ -174,7 +178,7 @@ def test_epoch(epoch, test_dataloader, model, criterion):
 
     device = next(model.parameters()).device
 
-    metric_logger = misc.MetricLogger(delimiter="  ")
+    metric_logger = logger.MetricLogger(delimiter="  ")
     header = 'Test:'
 
     # Switch to evaluation mode
