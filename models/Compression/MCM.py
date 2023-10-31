@@ -52,8 +52,8 @@ class MCM(CompressionModel):
     ):
         super().__init__()
 
-        # Initialize frozen stage 
-        self.frozen_stages = -1 
+        # Initialize frozen stage
+        self.frozen_stages = -1
 
         # Model hyperparameters
         self.encoder_embed_dim = encoder_embed_dim
@@ -372,13 +372,15 @@ class MCM(CompressionModel):
             ids_shuffle (list): Shuffled indices for patch selection.
         """
         if self.num_keep_patches > total_scores.shape[1]:
-            raise ValueError("Number of patches should not be greater than the length of scores")
+            raise ValueError(
+                "Number of patches should not be greater than the length of scores")
 
         shuffled_indices_list = []  # List to store shuffled indices for each total_score
         for total_score in total_scores:
             # Calculate percentiles and thresholds
             percentiles = torch.arange(0.1, 0.91, 0.1, dtype=torch.float32)
-            thresholds = torch.quantile(total_score.unique(), percentiles, dim=0)
+            thresholds = torch.quantile(
+                total_score.unique(), percentiles, dim=0)
 
             # Categorize data into groups
             categories = torch.bucketize(total_score, thresholds)
@@ -393,7 +395,8 @@ class MCM(CompressionModel):
             keep_values = total_score[categories == 9].tolist()
 
             # Apply softmax to group means for other groups
-            softmaxed_means = F.softmax(group_means[:-1], dim=0)  # Exclude the last group
+            softmaxed_means = F.softmax(
+                group_means[:-1], dim=0)  # Exclude the last group
             new_target = self.num_keep_patches - len(keep_values)
             scaled_means = torch.round(softmaxed_means * new_target).int()
 
@@ -408,9 +411,11 @@ class MCM(CompressionModel):
 
             # Create a list of indices
             for value, freq in keep_values_frequency.items():
-                ids_shuffle.extend(torch.nonzero(total_score == value).view(1, -1).squeeze(dim=0)[:freq].tolist())
+                ids_shuffle.extend(torch.nonzero(total_score == value).view(
+                    1, -1).squeeze(dim=0)[:freq].tolist())
 
-            remaining_indices = [i for i in range(len(total_score)) if i not in ids_shuffle]
+            remaining_indices = [i for i in range(
+                len(total_score)) if i not in ids_shuffle]
             ids_shuffle.extend(remaining_indices)
             shuffled_indices_list.append(ids_shuffle)
 
@@ -570,7 +575,7 @@ class MCM(CompressionModel):
         len_keep = int(self.num_keep_patches)
 
         # Sort noise for each sample
-        ids_shuffle = torch.tensor(ids_shuffle).view(1, -1)
+        ids_shuffle = torch.tensor(ids_shuffle).view(N, -1)
         ids_restore = torch.argsort(ids_shuffle, dim=1)
 
         # Keep the first subset
@@ -713,9 +718,8 @@ class MCM(CompressionModel):
         Returns:
             patched_imgs (torch.Tensor): Patched reconstruction image
         """
-
         # Encoder
-        x_remain, ids_restore = self.foward_encoder(imgs, total_scores)
+        x_remain, ids_restore = self.forward_encoder(imgs, total_scores)
 
         # LIC
         y = (x_remain.view(-1,
@@ -729,9 +733,9 @@ class MCM(CompressionModel):
 
         # Apply H_a module
         z = self.h_a(y)
+
         _, z_likelihood = self.entropy_bottleneck(z)
         z_offset = self.entropy_bottleneck._get_medians()
-
         z_tmp = z - z_offset
         z_hat = quantize_ste(z_tmp) + z_offset
 
@@ -766,6 +770,7 @@ class MCM(CompressionModel):
 
             # Calculate y_hat_slice
             y_hat_slice = quantize_ste(y_slice - mu) + mu
+
 
             # Calculate lrp transform
             lrp_support = torch.cat([mean_support, y_hat_slice], dim=1)

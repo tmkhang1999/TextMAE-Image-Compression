@@ -184,10 +184,10 @@ def test_epoch(epoch, test_dataloader, model, criterion):
     # Switch to evaluation mode
     model.eval()
     with torch.no_grad():
-        for (samples, t_scores, s_scores) in metric_logger.log_every(test_dataloader, 10, header):
+        for (samples, total_scores) in metric_logger.log_every(test_dataloader, 10, header):
             samples = samples.to(device)
             with torch.cuda.amp.autocast():
-                out_net = model(samples, t_scores, s_scores)
+                out_net = model(samples, total_scores)
                 # Compute output
                 out_criterion = criterion(out_net, samples)
 
