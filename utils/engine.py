@@ -68,11 +68,10 @@ def train_one_epoch(model, criterion, train_dataloader, optimizer, aux_optimizer
 
     # Calculate the runtime
     t0 = datetime.datetime.now()
-
-    for i, (samples, total_scores) in enumerate(metric_logger.log_every(train_dataloader, print_freq, header)):
+    for i, (samples, ori_shape, total_scores) in enumerate(metric_logger.log_every(train_dataloader, print_freq, header)):
         total_steps += samples.shape[0]
         samples = samples.to(device)
-
+        total_scores = total_scores.to(device)
         out_net = model(samples, total_scores)
 
         out_criterion = criterion(out_net, samples)
@@ -184,8 +183,9 @@ def test_epoch(epoch, test_dataloader, model, criterion):
     # Switch to evaluation mode
     model.eval()
     with torch.no_grad():
-        for (samples, total_scores) in metric_logger.log_every(test_dataloader, 10, header):
+        for (samples, ori_shape, total_scores) in metric_logger.log_every(test_dataloader, 10, header):
             samples = samples.to(device)
+            total_scores = total_scores.to(device)
             with torch.cuda.amp.autocast():
                 out_net = model(samples, total_scores)
                 # Compute output

@@ -1,6 +1,6 @@
+import os 
 import cv2
 import numpy as np
-
 
 # Check if it needs to continue divide
 def Division_Judge(img, h0, w0, h, w):
@@ -47,10 +47,6 @@ def Recursion(img, h0, w0, h, w):
 
 # Image segmentation
 def Division_Merge_Segmented(img, new_shape):
-    # Load image
-    img = np.array(img)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
     # Recursion
     Recursion(img, 0, 0, img.shape[0], img.shape[1])
 
@@ -61,11 +57,7 @@ def Division_Merge_Segmented(img, new_shape):
 
 
 def laplacian(img, new_shape):
-    # Load image
-    img = np.array(img)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
     # gray = cv2.GaussianBlur(gray, (5, 5), 0)
-    laplac = cv2.Laplacian(gray, cv2.CV_16S, ksize=3)
+    laplac = cv2.Laplacian(img, cv2.CV_16S, ksize=3)
     laplac = cv2.convertScaleAbs(laplac)
     return cv2.resize(laplac, new_shape)

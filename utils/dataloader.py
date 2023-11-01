@@ -8,6 +8,9 @@ from torchvision import transforms
 from utils.distribution import cal_patch_score
 from utils.map import Division_Merge_Segmented, laplacian
 
+import cv2
+import numpy as np
+
 # Fix typo in the export name
 __all__ = ["CreateImageDataset", "get_image_dataset"]
 
@@ -31,7 +34,7 @@ class CreateImageDataset(Dataset):
 
     def __getitem__(self, idx):
         img_path = self.imgs_path[idx]
-        orig_img = Image.open(img_path)
+        orig_img = Image.open(img_path).convert('RGB')
         orig_shape = orig_img.size
         total_score = calculate_patch_score(orig_img)
         img = self.transform(orig_img)
@@ -39,6 +42,10 @@ class CreateImageDataset(Dataset):
 
 
 def calculate_patch_score(img):
+    img = np.array(img, dtype=np.uint8)
+    if img.shape[2] == 3:
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    
     s_map = Division_Merge_Segmented(img, (224, 224))
     t_map = laplacian(img, (224, 224))
 

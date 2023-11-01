@@ -33,7 +33,9 @@ def save_model(args, epoch, model, optimizer, aux_optimizer, loss_scaler):
         Path.mkdir(output_dir)
     epoch_name = str(epoch)
     if loss_scaler is not None:
-        checkpoint_paths = [output_dir / ('checkpoint-%s.pth' % epoch_name)]
+        # checkpoint_paths = [output_dir / ('checkpoint-%s.pth' % epoch_name)]
+        checkpoint_paths = [output_dir / ('best_model.pth')]
+
         for checkpoint_path in checkpoint_paths:
             to_save = {
                 'model': model.state_dict(),
@@ -48,8 +50,9 @@ def save_model(args, epoch, model, optimizer, aux_optimizer, loss_scaler):
             save_on_master(to_save, checkpoint_path)
     else:
         client_state = {'epoch': epoch}
-        model.save_checkpoint(save_dir=args.output_dir, tag="checkpoint-%s" %
-                                                            epoch_name, client_state=client_state)
+        # model.save_checkpoint(save_dir=args.output_dir, tag="checkpoint-%s" %
+        #                                                     epoch_name, client_state=client_state)
+        model.save_checkpoint(save_dir=args.output_dir, tag="best_model", client_state=client_state)
 
 
 def save_on_master(*args, **kwargs):

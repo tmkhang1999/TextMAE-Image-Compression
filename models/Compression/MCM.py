@@ -379,6 +379,7 @@ class MCM(CompressionModel):
         for total_score in total_scores:
             # Calculate percentiles and thresholds
             percentiles = torch.arange(0.1, 0.91, 0.1, dtype=torch.float32)
+            percentiles = percentiles.to(total_scores.device)
             thresholds = torch.quantile(
                 total_score.unique(), percentiles, dim=0)
 
@@ -579,7 +580,8 @@ class MCM(CompressionModel):
         ids_restore = torch.argsort(ids_shuffle, dim=1)
 
         # Keep the first subset
-        ids_keep = ids_shuffle[:, :len_keep]
+        ids_keep = ids_shuffle[:, :len_keep].to(x.device)
+
         x_remain = torch.gather(
             x, dim=1, index=ids_keep.unsqueeze(-1).repeat(1, 1, D))
 
@@ -648,6 +650,8 @@ class MCM(CompressionModel):
         Returns:
             patched_imgs (torch.Tensor): Patched reconstruction image with shape (N, L_new, D).
         """
+        # Change device for ids_restore
+        ids_restore = ids_restore.to(x_remain.device)
         # Decoder embed tokens
         # Convert [N, L_new, D] to [N, L_new, self.decoder_embed_dim]
         x_decode = self.decoder_embed(x_remain)
@@ -794,7 +798,7 @@ class MCM(CompressionModel):
 
         return {
             "loss": loss,
-            "likelihood": {"y": y_likelihood, "z": z_likelihood},
+            "likelihoods": {"y": y_likelihood, "z": z_likelihood},
             "x_hat": x_hat,
         }
 

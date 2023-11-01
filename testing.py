@@ -12,7 +12,7 @@ if __name__ == '__main__':
     test_dataloader = DataLoader(
         test_dataset,
         sampler=None,
-        batch_size=8,
+        batch_size=1,
         num_workers=1,
         pin_memory=True,
         drop_last=False)

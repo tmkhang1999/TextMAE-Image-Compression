@@ -150,16 +150,16 @@ def main(args):
         checkpoint = torch.load(args.checkpoint, map_location='cpu')
         checkpoint_model = checkpoint['model']
 
-        # state_dict = mcm.state_dict()
-        # for k in ['head.weight', 'head.bias']:
-        #     if k in checkpoint_model and checkpoint_model[k].shape != state_dict[k].shape:
-        #         print(f"Removing key {k} from pretrained checkpoint")
-        #         del checkpoint_model[k]
+        state_dict = mcm.state_dict()
+        for k in ['head.weight', 'head.bias']:
+            if k in checkpoint_model and checkpoint_model[k].shape != state_dict[k].shape:
+                print(f"Removing key {k} from pretrained checkpoint")
+                del checkpoint_model[k]
 
         # interpolate position embedding
         pos_embed.interpolate_pos_embed(mcm, checkpoint_model)
-        msg = mcm.load_state_dict(checkpoint_model)
-        print(msg)
+        # msg = mcm.load_state_dict(checkpoint_model)
+        # print(msg)
 
     mcm.to(device)
     loss_scaler = scaler.NativeScaler()
@@ -168,17 +168,19 @@ def main(args):
                            aux_optimizer=aux_optimizer, loss_scaler=loss_scaler)
 
     criterion = rd_loss.RateDistortionLoss(lmbda=args.lmbda)
+    best_loss = 1e10
 
     print(f"Start training for {args.epochs} epochs")
     for epoch in range(args.start_epoch, args.epochs, 5):
         train_one_epoch(mcm, criterion, train_dataloader, optimizer, aux_optimizer, epoch, loss_scaler,
                         args.clip_max_norm, writer=writer, args=args)
-        test_epoch(epoch, test_dataloader, mcm, criterion)
+        out = test_epoch(epoch, test_dataloader, mcm, criterion)
 
         if args.output_dir:
+          if out['loss'] < best_loss:
             model_utils.save_model(args=args, epoch=epoch, model=mcm, optimizer=optimizer, aux_optimizer=aux_optimizer,
                                    loss_scaler=loss_scaler)
-
+            best_loss = out['loss']
 
 if __name__ == "__main__":
     args = get_args_parser()

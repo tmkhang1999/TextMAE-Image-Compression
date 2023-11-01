@@ -78,7 +78,7 @@ def feature_network(net_type="vgg16", requires_grad=False):
         raise NotImplementedError(
             "Feature net name [%s] is not recognized" % net_type)
 
-    feature_network.cpu()
+    feature_network.cuda()
 
     return feature_network
 
