@@ -77,9 +77,25 @@ def get_args_parser():
     parser.add_argument('--no_pin_mem', action='store_false', dest='pin_mem')
     parser.set_defaults(pin_mem=True)
 
-    # Additional Options
+    # Model Options
     parser.add_argument('--num_keep_patches', type=int, default=144,
                         help='Number of keep patches to input the model')
+
+    # Augmentation parameters
+    parser.add_argument("--input_size", type=int, default=224, required=True,
+                        help="Size of the input image")
+    parser.add_argument('--color_jitter', type=float, default=None, metavar='PCT',
+                        help='Color jitter factor (enabled only when not using Auto/RandAug)')
+    parser.add_argument('--aa', type=str, default='rand-m9-mstd0.5-inc1', metavar='NAME',
+                        help='Use AutoAugment policy. "v0" or "original". " + "(default: rand-m9-mstd0.5-inc1)'),
+
+    # * Random Erase params
+    parser.add_argument('--reprob', type=float, default=0.25, metavar='PCT',
+                        help='Random erase prob (default: 0.25)')
+    parser.add_argument('--remode', type=str, default='pixel',
+                        help='Random erase mode (default: "pixel")')
+    parser.add_argument('--recount', type=int, default=1,
+                        help='Random erase count (default: 1)')
 
     return parser
 
@@ -96,15 +112,13 @@ def main(args):
 
     # Data preprocessing and dataset creation
     cudnn.benchmark = True
-    cfg = {"crop": 224, "hflip": False}
-    custom_dataset = get_image_dataset(args.dataset, cfg)
-    dataset_size = len(custom_dataset)
-    train_size = int(0.8 * dataset_size)
-    test_size = dataset_size - train_size
+    train_dataset = get_image_dataset(is_train=True,
+                                      dataset_path=args.dataset,
+                                      args=args)
 
-    # Split the dataset into training and testing subsets
-    train_dataset, test_dataset = random_split(
-        custom_dataset, [train_size, test_size])
+    test_dataset = get_image_dataset(is_train=False,
+                                     dataset_path=args.dataset,
+                                     args=args)
 
     # Setting up data samplers
     num_tasks = distributed.get_world_size()  # GPU's RAM
@@ -177,10 +191,12 @@ def main(args):
         out = test_epoch(epoch, test_dataloader, mcm, criterion)
 
         if args.output_dir:
-          if out['loss'] < best_loss:
-            model_utils.save_model(args=args, epoch=epoch, model=mcm, optimizer=optimizer, aux_optimizer=aux_optimizer,
-                                   loss_scaler=loss_scaler)
-            best_loss = out['loss']
+            if out['loss'] < best_loss:
+                model_utils.save_model(args=args, epoch=epoch, model=mcm, optimizer=optimizer,
+                                       aux_optimizer=aux_optimizer,
+                                       loss_scaler=loss_scaler)
+                best_loss = out['loss']
+
 
 if __name__ == "__main__":
     args = get_args_parser()
