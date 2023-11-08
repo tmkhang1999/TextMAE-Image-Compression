@@ -152,18 +152,20 @@ class HuffmanCoding:
         self.build_tree()
         self.build_codes()
         encoded_text = self.encode(tensor)
-        return encoded_text, tensor.device
+        ori_shape = tensor.shape
+        return encoded_text, ori_shape, tensor.device
 
-    def decompress(self, encoded_text, device):
+    def decompress(self, encoded_text, ori_shape, device):
         """
         Decompress the encoded text into a PyTorch tensor.
 
         Args:
             encoded_text: The encoded text as a binary string.
+            ori_shape: The original shape of text.
             device: The torch device (cuda).
 
         Returns:
             The decompressed PyTorch tensor.
         """
         decoded_tensor = self.decode(encoded_text).to(device)
-        return decoded_tensor
+        return decoded_tensor.view(ori_shape)

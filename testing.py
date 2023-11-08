@@ -8,17 +8,13 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List
 
+import compressai
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+from compressai.zoo import load_state_dict
+from pytorch_msssim import ms_ssim
 from torch.utils.data import DataLoader
 from torchvision import transforms
-
-import compressai
-from compressai.ops import compute_padding
-from compressai.zoo import load_state_dict
-
-from pytorch_msssim import ms_ssim
 
 from models.Compression.MCM import MCM
 from utils.dataloader import get_image_dataset
@@ -79,8 +75,8 @@ def inference(model, x, total_score, file_name, output_dir):
     ids_keep = out_enc["ids_restore"]
 
     huffman = HuffmanCoding()
-    compressed_ids_keep, device = huffman.compress(ids_keep)
-    decompressed_ids_keep = huffman.decompress(compressed_ids_keep, device)
+    compressed_ids_keep, shape, device = huffman.compress(ids_keep)
+    decompressed_ids_keep = huffman.decompress(compressed_ids_keep, shape, device)
 
     # Decompression process
     start = time.time()
