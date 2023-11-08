@@ -25,7 +25,7 @@ def save_checkpoint(state, is_best, filename):
 
 def get_args_parser():
     parser = argparse.ArgumentParser(
-        'MAE fine-tuning for image classification', add_help=False)
+        'MAE fine-tuning for image compression', add_help=False)
 
     # Dataset
     parser.add_argument("-d", "--dataset", type=str,
@@ -149,6 +149,7 @@ def main(args):
         pin_memory=args.pin_mem,
         drop_last=True,
     )
+
     test_dataloader = DataLoader(
         test_dataset,
         sampler=sampler_val,

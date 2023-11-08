@@ -28,9 +28,9 @@ class CreateImageDataset(Dataset):
         """
         self.dataset_path = dataset_path
         self.transform = transform
-        root = os.path.join(self.dataset_path, "train" if is_train else "val")
+        self.root = os.path.join(self.dataset_path, "train" if is_train else "val")
+        self.imgs_path = sorted(Path(self.root).rglob("*.*"))
 
-        self.imgs_path = sorted(Path(root).rglob("."))
         assert len(self.imgs_path) > 0, f"No images found in {dataset_path}"
 
     def __len__(self):
@@ -81,7 +81,7 @@ def get_image_dataset(is_train: bool, dataset_path: Path, args) -> Dataset:
             color_jitter=args.color_jitter,
             auto_augment=args.aa,
             interpolation="bicubic",
-            re_prob=args.rebrob,
+            re_prob=args.reprob,
             re_mode=args.remode,
             re_count=args.recount,
             mean=IMAGENET_DEFAULT_MEAN,
@@ -89,13 +89,8 @@ def get_image_dataset(is_train: bool, dataset_path: Path, args) -> Dataset:
         )
     else:
         t = []
-        if args.input_size <= 224:
-            crop_pct = 224 / 256
-        else:
-            crop_pct = 1
-        size = int(args.input_size / crop_pct)
         t.append(
-            transforms.Resize(size, interpolation=Image.BICUBIC)
+            transforms.Resize(224, interpolation=Image.BICUBIC)
         )  # to maintain same ratio w.r.t 224 images
         t.append(transforms.CenterCrop(args.input_size))
         t.append(transforms.ToTensor())

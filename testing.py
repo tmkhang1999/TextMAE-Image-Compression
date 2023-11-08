@@ -11,11 +11,14 @@ from typing import Any, Dict, List
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from compressai.ops import compute_padding
-from compressai.zoo import load_state_dict
-from pytorch_mssim import ms_ssim
 from torch.utils.data import DataLoader
 from torchvision import transforms
+
+import compressai
+from compressai.ops import compute_padding
+from compressai.zoo import load_state_dict
+
+from pytorch_msssim import ms_ssim
 
 from models.Compression.MCM import MCM
 from utils.dataloader import get_image_dataset
@@ -57,29 +60,35 @@ def save_output(x, file_name, output_dir):
 
 @torch.no_grad()
 def inference(model, x, total_score, file_name, output_dir):
-    # Add padding to the input image
-    h, w = x.size(2), x.size(3)
-    pad, unpad = compute_padding(h, w, min_div=2 ** 6)  # Pad to allow 6 strides of 2
-    x_padded = F.pad(x, pad, mode="constant", value=0)
+    # # Add padding to the input image
+    # h, w = x.size(2), x.size(3)
+    # pad, unpad = compute_padding(h, w, min_div=2 ** 6)  # Pad to allow 6 strides of 2
+    # x_padded = F.pad(x, pad, mode="constant", value=0)
+
+    device = next(model.parameters()).device
+
+    x = x.to(device)
+    total_score = total_score.to(device)
 
     # Compression process
     start = time.time()
-    out_enc = model.compress(x_padded, total_score)
+    out_enc = model.compress(x, total_score)
     enc_time = time.time() - start
 
     # Store the list of IDs for Huffman coding
-    ids_keep = out_enc["ids_keep"]
+    ids_keep = out_enc["ids_restore"]
+
     huffman = HuffmanCoding()
     compressed_ids_keep, device = huffman.compress(ids_keep)
     decompressed_ids_keep = huffman.decompress(compressed_ids_keep, device)
 
     # Decompression process
     start = time.time()
-    out_dec = model.decompress(out_enc["strings"], out_enc["shape"], decompressed_ids_keep)
+    out_dec = model.decompress(out_enc["string"], out_enc["shape"], decompressed_ids_keep)
     dec_time = time.time() - start
 
-    # Remove padding from the reconstructed image
-    out_dec["x_hat"] = F.pad(out_dec["x_hat"], unpad)
+    # # Remove padding from the reconstructed image
+    # out_dec["x_hat"] = F.pad(out_dec["x_hat"], unpad)
 
     # Save the reconstructed image
     save_output(out_dec["x_hat"], file_name, output_dir)
@@ -196,7 +205,6 @@ def setup_args():
                         help="Number of patches to keep as input to the model")
     parser.add_argument("--input_size", type=int, default=224, required=True,
                         help="Size of the input image")
-
     return parser
 
 
@@ -211,7 +219,7 @@ def main(argv):
 
     compressai.set_entropy_coder(args.entropy_coder)
 
-    runs = args.check_paths
+    runs = args.checkpoint_paths
     load_func = load_checkpoint
 
     results = defaultdict(list)
