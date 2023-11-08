@@ -8,7 +8,6 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List
 
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -58,11 +57,6 @@ def save_output(x, file_name, output_dir):
 
 @torch.no_grad()
 def inference(model, x, total_score, file_name, output_dir):
-    # Create necessary directories
-    os.makedirs(output_dir, exist_ok=True)
-    ids_dir = os.path.join(output_dir, 'bin')
-    os.makedirs(ids_dir, exist_ok=True)
-
     # Add padding to the input image
     h, w = x.size(2), x.size(3)
     pad, unpad = compute_padding(h, w, min_div=2 ** 6)  # Pad to allow 6 strides of 2
@@ -154,6 +148,7 @@ def eval_model(
         drop_last=False
     )
 
+    os.makedirs(output_dir, exist_ok=True)
     for index, (img, ori_shape, total_score) in enumerate(test_dataloader):
         file_name = str(filepaths[index]).split("/")[-1]
         file_name = file_name.split(".")[0]
@@ -176,28 +171,31 @@ def eval_model(
 def setup_args():
     parser = argparse.ArgumentParser()
 
-    # Common options.
+    # Common options
     parser.add_argument("-d", "--dataset", type=str, help="Path to the dataset")
-    parser.add_argument("-r", "--recon_path", type=str, default="reconstruction",
+    parser.add_argument("-r", "--output_path", type=str, default="reconstruction",
                         help="Path to save reconstructed images")
 
     parser.add_argument("-c", "--entropy-coder",
                         choices=compressai.available_entropy_coders(),
                         default=compressai.available_entropy_coders()[0],
                         help="Entropy coder (default: %(default)s)")
-    parser.add_argument("--cuda", action="store_true", help="Enable CUDA")
-    parser.add_argument("--half", action="store_true", help="Convert model to half floating point (fp16)")
+    parser.add_argument("--cuda", action="store_true",
+                        help="Enable CUDA")
+    parser.add_argument("--half", action="store_true",
+                        help="Convert model to half floating point (fp16)")
     parser.add_argument("--entropy-estimation", action="store_true",
                         help="Use evaluated entropy estimation (no entropy coding)")
-    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose mode")
+    parser.add_argument("-v", "--verbose", action="store_true",
+                        help="Enable verbose mode")
     parser.add_argument("-p", "--path", dest="checkpoint_paths", type=str, nargs="*", required=True,
                         help="Checkpoint paths")
-    parser.add_argument("--exp_name", type=str, required=True, help="Experiment name")
 
     # Additional Options
     parser.add_argument("--num_keep_patches", type=int, default=144, required=True,
                         help="Number of patches to keep as input to the model")
-    parser.add_argument("--input_size", type=int, default=224, required=True, help="Size of the input image")
+    parser.add_argument("--input_size", type=int, default=224, required=True,
+                        help="Size of the input image")
 
     return parser
 
@@ -230,7 +228,7 @@ def main(argv):
 
         metrics = eval_model(
             model,
-            args.recon_path,
+            args.output_path,
             args.dataset,
             filepaths,
             args,

@@ -37,8 +37,8 @@ def get_args_parser():
     parser.add_argument("--start_epoch", default=0, type=int)
     parser.add_argument("--accum_iter", default=1, type=int,
                         help="Accumulate gradient iterations for effective batch size")
-    parser.add_argument("--learning-rate", "-lr", default=1e-4,
-                        type=float, help="Learning rate (default: %(default)s)")
+    parser.add_argument("--learning-rate", "-lr", default=1e-4, type=float,
+                        help="Learning rate (default: %(default)s)")
     parser.add_argument("--lambda", dest="lmbda", type=float, default=1e-4,
                         help="Bit-rate distortion parameter (default: %(default)s)")
     parser.add_argument("--batch_size", type=int, default=16,
@@ -50,8 +50,8 @@ def get_args_parser():
 
     # Miscellaneous Options
     parser.add_argument("--cuda", action="store_true", help="Use cuda")
-    parser.add_argument("--save", action="store_true",
-                        default=True, help="Save model to disk")
+    parser.add_argument("--save", action="store_true", default=True,
+                        help="Save model to disk")
     parser.add_argument("--save_path", type=str,
                         default="ckpt/model.pth.tar", help="Where to Save model")
     parser.add_argument("--seed", default=0, type=int,
@@ -60,8 +60,8 @@ def get_args_parser():
                         help="Gradient clipping max norm (default: %(default)s")
 
     # Checkpoints and Logging
-    parser.add_argument("--checkpoint", type=str,
-                        default='', help="Path to a checkpoint")
+    parser.add_argument("--checkpoint", type=str, default='',
+                        help="Path to a checkpoint")
     parser.add_argument('--resume', default='', help='Resume from checkpoint')
     parser.add_argument('--output_dir', default='',
                         help='Path where to save, empty for no saving')
