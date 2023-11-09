@@ -1,6 +1,6 @@
-import os 
 import cv2
 import numpy as np
+
 
 # Check if it needs to continue divide
 def Division_Judge(img, h0, w0, h, w):
