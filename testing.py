@@ -48,14 +48,15 @@ def compute_metrics(org: torch.Tensor, rec: torch.Tensor, max_val: int = 255) ->
     return {"psnr": psnr_value.item(), "ms-ssim": ms_ssim_value.item()}
 
 
-def save_output(x, file_name, output_dir):
+def save_output(x, ori_shape, file_name, output_dir):
     x = x.squeeze().clamp(0, 1)
+    x = x.view(ori_shape)
     x = transforms.ToPILImage()(x.cpu())
     x.save(os.path.join(output_dir, file_name))
 
 
 @torch.no_grad()
-def inference(model, x, total_score, file_name, output_dir):
+def inference(model, x, ori_shape, total_score, file_name, output_dir):
     # # Add padding to the input image
     # h, w = x.size(2), x.size(3)
     # pad, unpad = compute_padding(h, w, min_div=2 ** 6)  # Pad to allow 6 strides of 2
@@ -87,14 +88,14 @@ def inference(model, x, total_score, file_name, output_dir):
     # out_dec["x_hat"] = F.pad(out_dec["x_hat"], unpad)
 
     # Save the reconstructed image
-    save_output(out_dec["x_hat"], file_name, output_dir)
+    save_output(out_dec["x_hat"], ori_shape, file_name, output_dir)
 
     # Calculate metrics for evaluation
     metrics = compute_metrics(x, out_dec["x_hat"], 255)
     num_pixels = x.size(0) * x.size(2) * x.size(3)
 
     # Calculate bits per pixel (bpp)
-    bpp = sum(len(s[0]) for s in out_enc["strings"]) * 8.0 / num_pixels
+    bpp = sum(len(s[0]) for s in out_enc["string"]) * 8.0 / num_pixels
     bpp += (len(compressed_ids_keep) / num_pixels)
 
     return {
@@ -156,12 +157,11 @@ def eval_model(
     os.makedirs(output_dir, exist_ok=True)
     for index, (img, ori_shape, total_score) in enumerate(test_dataloader):
         file_name = str(filepaths[index]).split("/")[-1]
-        file_name = file_name.split(".")[0]
         if not args.entropy_estimation:
             if args.half:
                 model = model.half()
                 img = img.to(device).half()
-            rv = inference(model, img, total_score, file_name, output_dir)
+            rv = inference(model, img, ori_shape, total_score, file_name, output_dir)
         else:
             rv = inference_entropy_estimation(model, img)
         for k, v in rv.items():
@@ -178,7 +178,7 @@ def setup_args():
 
     # Common options
     parser.add_argument("-d", "--dataset", type=str, help="Path to the dataset")
-    parser.add_argument("-r", "--output_path", type=str, default="reconstruction",
+    parser.add_argument("-o", "--output_path", type=str, default="reconstruction",
                         help="Path to save reconstructed images")
 
     parser.add_argument("-c", "--entropy-coder",
@@ -193,7 +193,7 @@ def setup_args():
                         help="Use evaluated entropy estimation (no entropy coding)")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="Enable verbose mode")
-    parser.add_argument("-p", "--path", dest="checkpoint_paths", type=str, nargs="*", required=True,
+    parser.add_argument("-c", "--checkpoint", dest="checkpoint_paths", type=str, nargs="*", required=True,
                         help="Checkpoint paths")
 
     # Additional Options
