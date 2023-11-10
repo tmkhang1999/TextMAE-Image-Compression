@@ -156,12 +156,12 @@ def train_one_epoch(model, criterion, train_dataloader, optimizer, aux_optimizer
     return {k: round(meter.global_avg, 7) for k, meter in metric_logger.meters.items()}
 
 
-def test_epoch(epoch, test_dataloader, model, criterion):
+def val_one_epoch(epoch, val_dataloader, model, criterion):
     """Test the model for one epoch and calculate average losses.
 
     Args:
         epoch (int): The current epoch number.
-        test_dataloader (DataLoader): The data loader for test data.
+        val_dataloader (DataLoader): The data loader for val data.
         model (nn.Module): The neural network model to evaluate.
         criterion: The loss function.
 
@@ -183,7 +183,7 @@ def test_epoch(epoch, test_dataloader, model, criterion):
     # Switch to evaluation mode
     model.eval()
     with torch.no_grad():
-        for (samples, ori_shape, total_scores) in metric_logger.log_every(test_dataloader, 10, header):
+        for (samples, ori_shape, total_scores) in metric_logger.log_every(val_dataloader, 10, header):
             samples = samples.to(device)
             total_scores = total_scores.to(device)
             with torch.cuda.amp.autocast():

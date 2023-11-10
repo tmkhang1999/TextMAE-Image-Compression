@@ -17,18 +17,18 @@ from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
 
 class CreateImageDataset(Dataset):
-    def __init__(self, is_train: bool, dataset_path: Path, transform):
+    def __init__(self, mode: str, dataset_path: Path, transform):
         """
         Custom dataset for image data.
 
         Args:
-            is_train (bool):
+            mode (str): Dataset mode ("train", "val", or "test").
             dataset_path (Path): Path to the dataset.
             transform (torchvision.transforms.Compose): Image transformations.
         """
         self.dataset_path = dataset_path
         self.transform = transform
-        self.root = os.path.join(self.dataset_path, "train" if is_train else "val")
+        self.root = self.dataset_path if mode == "test" else os.path.join(self.dataset_path, mode)
         self.imgs_path = sorted(Path(self.root).rglob("*.*"))
 
         assert len(self.imgs_path) > 0, f"No images found in {dataset_path}"
@@ -58,23 +58,25 @@ def calculate_patch_score(img):
 
     total_score = t_score * s_score
     total_score = (total_score - total_score.min()) / (
-        total_score.max() - total_score.min()
+            total_score.max() - total_score.min()
     )
     total_score = torch.tensor(total_score, dtype=torch.float32)
 
     return total_score
 
 
-def get_image_dataset(is_train: bool, dataset_path: Path, args) -> Dataset:
+def get_image_dataset(mode: str, dataset_path: Path, args) -> Dataset:
     """
     Get an image dataset.
 
     Args:
-        is_train (bool):
+        mode (str): Dataset mode ("train", "val", or "test").
         dataset_path (str) : Dataset path.
         args (dict, optional): config.
     """
-    if is_train:
+    assert mode in ["train", "val", "test"], "Mode must be one of ['train', 'val', 'test']"
+
+    if mode == "train":
         transform = create_transform(
             input_size=args.input_size,
             is_training=True,
@@ -88,16 +90,14 @@ def get_image_dataset(is_train: bool, dataset_path: Path, args) -> Dataset:
             std=IMAGENET_DEFAULT_STD,
         )
     else:
-        t = []
-        t.append(
-            transforms.Resize(224, interpolation=Image.BICUBIC)
-        )  # to maintain same ratio w.r.t 224 images
-        t.append(transforms.CenterCrop(args.input_size))
+        t = list()
+        t.append(transforms.Resize(224, interpolation=Image.BICUBIC))  # to maintain same ratio w.r.t 224 images
+        # t.append(transforms.CenterCrop(args.input_size))
         t.append(transforms.ToTensor())
         t.append(transforms.Normalize(IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD))
         transform = transforms.Compose(t)
 
     dataset = CreateImageDataset(
-        dataset_path=dataset_path, is_train=is_train, transform=transform
+        dataset_path=dataset_path, mode=mode, transform=transform
     )
     return dataset

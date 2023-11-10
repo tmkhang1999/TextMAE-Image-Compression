@@ -142,7 +142,7 @@ def eval_model(
     device = next(model.parameters()).device
     metrics = defaultdict(float)
 
-    test_dataset = get_image_dataset(is_train=False,
+    test_dataset = get_image_dataset(mode="test",
                                      dataset_path=input_dir,
                                      args=args)
     test_dataloader = DataLoader(
@@ -254,6 +254,8 @@ def main(argv):
     }
 
     print(json.dumps(output, indent=2))
+    with open(os.path.join(args.output_path, "report.txt"), 'w') as output_file:
+        json.dump(output, output_file, indent=2)
 
 
 if __name__ == "__main__":

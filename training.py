@@ -13,7 +13,7 @@ from models.Compression.MCM import MCM
 from models.Compression.common import scaler, distributed, model_utils, pos_embed
 from models.Compression.loss import rd_loss
 from utils.dataloader import get_image_dataset
-from utils.engine import train_one_epoch, test_epoch
+from utils.engine import train_one_epoch, val_one_epoch
 
 
 def save_checkpoint(state, is_best, filename):
@@ -112,13 +112,13 @@ def main(args):
 
     # Data preprocessing and dataset creation
     cudnn.benchmark = True
-    train_dataset = get_image_dataset(is_train=True,
+    train_dataset = get_image_dataset(mode="train",
                                       dataset_path=args.dataset,
                                       args=args)
 
-    test_dataset = get_image_dataset(is_train=False,
-                                     dataset_path=args.dataset,
-                                     args=args)
+    val_dataset = get_image_dataset(mode="val",
+                                    dataset_path=args.dataset,
+                                    args=args)
 
     # Setting up data samplers
     num_tasks = distributed.get_world_size()  # GPU's RAM
@@ -131,7 +131,7 @@ def main(args):
     )
     print("Sampler_train = %s" % str(sampler_train))
 
-    sampler_val = torch.utils.data.SequentialSampler(test_dataset)
+    sampler_val = torch.utils.data.SequentialSampler(val_dataset)
 
     # Configuring a writer for logging
     if global_rank == 0 and args.log_dir is not None:
@@ -150,8 +150,8 @@ def main(args):
         drop_last=True,
     )
 
-    test_dataloader = DataLoader(
-        test_dataset,
+    val_dataloader = DataLoader(
+        val_dataset,
         sampler=sampler_val,
         batch_size=args.test_batch_size,
         num_workers=args.num_workers,
@@ -189,7 +189,7 @@ def main(args):
     for epoch in range(args.start_epoch, args.epochs, 5):
         train_one_epoch(mcm, criterion, train_dataloader, optimizer, aux_optimizer, epoch, loss_scaler,
                         args.clip_max_norm, writer=writer, args=args)
-        out = test_epoch(epoch, test_dataloader, mcm, criterion)
+        out = val_one_epoch(epoch, val_dataloader, mcm, criterion)
 
         if args.output_dir:
             if out['loss'] < best_loss:
