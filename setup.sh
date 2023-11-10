@@ -12,8 +12,9 @@ chmod 600 ~/.kaggle/kaggle.json
 kaggle datasets download -d ambityga/imagenet100
 
 # Unzip and reorganize the dataset
-unzip imagenet100.zip -d imagenet
-python reconstruct_dataset.py imagenet
+unzip imagenet100.zip -d imagenet100
+rm -rf imagenet100.zip
+python reconstruct_dataset.py imagenet100 imagenet
 cd ..
 
 # Download pretrained weights for MAE
