@@ -89,12 +89,17 @@ def get_image_dataset(mode: str, dataset_path: Path, args) -> Dataset:
             mean=IMAGENET_DEFAULT_MEAN,
             std=IMAGENET_DEFAULT_STD,
         )
-    else:
+    elif mode == "val":
         t = list()
-        t.append(transforms.Resize(224, interpolation=Image.BICUBIC))  # to maintain same ratio w.r.t 224 images
+        t.append(transforms.Resize((224, 224), interpolation=Image.BICUBIC))  # to maintain same ratio w.r.t 224 images
         # t.append(transforms.CenterCrop(args.input_size))
         t.append(transforms.ToTensor())
         t.append(transforms.Normalize(IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD))
+        transform = transforms.Compose(t)
+    else:
+        t = list()
+        t.append(transforms.Resize((224, 224), interpolation=Image.BICUBIC))
+        t.append(transforms.ToTensor())
         transform = transforms.Compose(t)
 
     dataset = CreateImageDataset(

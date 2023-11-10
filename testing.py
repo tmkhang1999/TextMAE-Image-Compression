@@ -19,6 +19,7 @@ from torchvision import transforms
 from models.Compression.MCM import MCM
 from utils.dataloader import get_image_dataset
 from utils.huffman import HuffmanCoding
+from PIL import Image
 
 # Constants
 IMG_EXTENSIONS = (".jpg", ".jpeg", ".png", ".ppm", ".bmp", ".pgm", ".tif", ".tiff", ".webp")
@@ -49,21 +50,17 @@ def compute_metrics(org: torch.Tensor, rec: torch.Tensor, max_val: int = 255) ->
 
 
 def save_output(x, ori_shape, file_name, output_dir):
-    x = x.squeeze().clamp(0, 1)
-    x = x.view(ori_shape)
+    x = x.squeeze()
+    x.clamp_(0, 1)
     x = transforms.ToPILImage()(x.cpu())
+    x.resize(ori_shape, Image.BICUBIC)
     x.save(os.path.join(output_dir, file_name))
 
 
 @torch.no_grad()
 def inference(model, x, ori_shape, total_score, file_name, output_dir):
-    # # Add padding to the input image
-    # h, w = x.size(2), x.size(3)
-    # pad, unpad = compute_padding(h, w, min_div=2 ** 6)  # Pad to allow 6 strides of 2
-    # x_padded = F.pad(x, pad, mode="constant", value=0)
-
+    # Get device
     device = next(model.parameters()).device
-
     x = x.to(device)
     total_score = total_score.to(device)
 
@@ -74,7 +71,6 @@ def inference(model, x, ori_shape, total_score, file_name, output_dir):
 
     # Store the list of IDs for Huffman coding
     ids_keep = out_enc["ids_restore"]
-
     huffman = HuffmanCoding()
     compressed_ids_keep, shape, device = huffman.compress(ids_keep)
     decompressed_ids_keep = huffman.decompress(compressed_ids_keep, shape, device)
@@ -84,12 +80,6 @@ def inference(model, x, ori_shape, total_score, file_name, output_dir):
     out_dec = model.decompress(out_enc["string"], out_enc["shape"], decompressed_ids_keep)
     dec_time = time.time() - start
 
-    # # Remove padding from the reconstructed image
-    # out_dec["x_hat"] = F.pad(out_dec["x_hat"], unpad)
-
-    # Save the reconstructed image
-    save_output(out_dec["x_hat"], ori_shape, file_name, output_dir)
-
     # Calculate metrics for evaluation
     metrics = compute_metrics(x, out_dec["x_hat"], 255)
     num_pixels = x.size(0) * x.size(2) * x.size(3)
@@ -97,6 +87,9 @@ def inference(model, x, ori_shape, total_score, file_name, output_dir):
     # Calculate bits per pixel (bpp)
     bpp = sum(len(s[0]) for s in out_enc["string"]) * 8.0 / num_pixels
     bpp += (len(compressed_ids_keep) / num_pixels)
+
+    # Save the reconstructed image
+    save_output(out_dec["x_hat"], ori_shape, file_name, output_dir)
 
     return {
         "psnr": metrics["psnr"],
@@ -181,7 +174,7 @@ def setup_args():
     parser.add_argument("-o", "--output_path", type=str, default="reconstruction",
                         help="Path to save reconstructed images")
 
-    parser.add_argument("-c", "--entropy-coder",
+    parser.add_argument("-e", "--entropy-coder",
                         choices=compressai.available_entropy_coders(),
                         default=compressai.available_entropy_coders()[0],
                         help="Entropy coder (default: %(default)s)")
@@ -248,7 +241,7 @@ def main(argv):
         "entropy estimation" if args.entropy_estimation else args.entropy_coder
     )
     output = {
-        "name": args.architecture,
+        "name": "MCM",
         "description": f"Inference ({description})",
         "results": results,
     }
