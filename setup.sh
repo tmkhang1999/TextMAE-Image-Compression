@@ -4,16 +4,16 @@
 pip install -r requirements.txt
 
 # Download imagenet1000 dataset from kaggle to dataset
-cd datasets
-pip install --user kaggle
-mkdir ~/.kaggle
-mv kaggle.json ~/.kaggle
-chmod 600 ~/.kaggle/kaggle.json
-kaggle datasets download -d ambityga/imagenet100
+#cd datasets
+#pip install --user kaggle
+#mkdir ~/.kaggle
+#mv kaggle.json ~/.kaggle
+#chmod 600 ~/.kaggle/kaggle.json
+#kaggle datasets download -d ambityga/imagenet100
 
 # Unzip and reorganize the dataset
-unzip imagenet100.zip -d imagenet100
-rm -rf imagenet100.zip
+unzip archive.zip -d imagenet100
+rm -rf archive.zip
 python reconstruct_dataset.py imagenet100 imagenet
 cd ..
 
