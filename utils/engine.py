@@ -123,16 +123,16 @@ def train_one_epoch(model, criterion, train_dataloader, optimizer, aux_optimizer
 
         if writer is not None and (i + 1) % accum_iter == 0:
             # Log metrics to TensorBoard
-            epoch_1000x = int((i / len(train_dataloader) + epoch) * 1000)
-            writer.add_scalar('loss', loss_value_reduce, epoch_1000x)
-            writer.add_scalar('L1_loss', L1_loss_value_reduce, epoch_1000x)
-            writer.add_scalar('ssim_loss', ssim_loss_value_reduce, epoch_1000x)
-            writer.add_scalar('vgg_loss', vgg_loss_value_reduce, epoch_1000x)
-            writer.add_scalar('bpp_loss', bpp_loss_value_reduce, epoch_1000x)
-            writer.add_scalar('aux_loss', aux_loss_value_reduce, epoch_1000x)
-            writer.add_scalar('lr', max_lr, epoch_1000x)
+            epoch_100x = int((i / len(train_dataloader) + epoch) * 100)
+            writer.add_scalar('loss', loss_value_reduce, epoch_100x)
+            writer.add_scalar('L1_loss', L1_loss_value_reduce, epoch_100x)
+            writer.add_scalar('ssim_loss', ssim_loss_value_reduce, epoch_100x)
+            writer.add_scalar('vgg_loss', vgg_loss_value_reduce, epoch_100x)
+            writer.add_scalar('bpp_loss', bpp_loss_value_reduce, epoch_100x)
+            writer.add_scalar('aux_loss', aux_loss_value_reduce, epoch_100x)
+            writer.add_scalar('lr', max_lr, epoch_100x)
 
-        if i % 500 == 0:
+        if i % 50 == 0:
             t1 = datetime.datetime.now()
             deltatime = t1 - t0
             dt = deltatime.seconds + 1e-6 * deltatime.microseconds
