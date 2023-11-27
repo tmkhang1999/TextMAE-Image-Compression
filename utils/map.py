@@ -25,12 +25,10 @@ def Division_Judge(img, h0, w0, h, w):
 
 # Merging
 def Merge(img, h0, w0, h, w):
-    for row in range(h0, h0 + h):
-        for col in range(w0, w0 + w):
-            if 60 < img[row, col] < 150:
-                img[row, col] = 0
-            else:
-                img[row, col] = 255
+    area = img[h0:h0 + h, w0:w0 + w]
+    mask = (60 < area) & (area < 150)
+    img[h0:h0 + h, w0:w0 + w][mask] = 0
+    img[h0:h0 + h, w0:w0 + w][~mask] = 255
 
 
 # Recursion
@@ -39,8 +37,7 @@ def Recursion(img, h0, w0, h, w):
         Recursion(img, h0, w0, int(h / 2), int(w / 2))
         Recursion(img, h0, w0 + int(w / 2), int(h / 2), int(w / 2))
         Recursion(img, h0 + int(h / 2), w0, int(h / 2), int(w / 2))
-        Recursion(img, h0 + int(h / 2), w0 +
-                  int(w / 2), int(h / 2), int(w / 2))
+        Recursion(img, h0 + int(h / 2), w0 + int(w / 2), int(h / 2), int(w / 2))
     else:
         Merge(img, h0, w0, h, w)
 

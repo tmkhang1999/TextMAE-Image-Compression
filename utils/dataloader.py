@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 
@@ -17,7 +18,7 @@ from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
 
 class CreateImageDataset(Dataset):
-    def __init__(self, mode: str, dataset_path: Path, transform):
+    def __init__(self, mode: str, dataset_path: Path, scores_file: Path, transform):
         """
         Custom dataset for image data.
 
@@ -33,6 +34,9 @@ class CreateImageDataset(Dataset):
 
         assert len(self.imgs_path) > 0, f"No images found in {dataset_path}"
 
+        with open(scores_file, 'r') as f:
+            self.scores = json.load(f)
+
     def __len__(self):
         return len(self.imgs_path)
 
@@ -40,38 +44,19 @@ class CreateImageDataset(Dataset):
         img_path = self.imgs_path[idx]
         orig_img = Image.open(img_path).convert("RGB")
         orig_shape = orig_img.size
-        total_score = calculate_patch_score(orig_img)
+        total_score = self.scores[str(idx)]
         img = self.transform(orig_img)
-        return img, orig_shape, total_score
+        return img, orig_shape, torch.tensor(total_score, dtype=torch.float32)
 
 
-def calculate_patch_score(img):
-    img = np.array(img, dtype=np.uint8)
-    if img.shape[2] == 3:
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    s_map = Division_Merge_Segmented(img, (224, 224))
-    t_map = laplacian(img, (224, 224))
-
-    s_score = cal_patch_score(s_map)
-    t_score = cal_patch_score(t_map)
-
-    total_score = t_score * s_score
-    total_score = (total_score - total_score.min()) / (
-            total_score.max() - total_score.min()
-    )
-    total_score = torch.tensor(total_score, dtype=torch.float32)
-
-    return total_score
-
-
-def get_image_dataset(mode: str, dataset_path: Path, args) -> Dataset:
+def get_image_dataset(mode: str, dataset_path: Path, scores_file: Path, args) -> Dataset:
     """
     Get an image dataset.
 
     Args:
         mode (str): Dataset mode ("train", "val", or "test").
-        dataset_path (str) : Dataset path.
+        dataset_path (Path): Dataset path.
+        scores_file (Path): The file saving the total score of images in dataset.
         args (dict, optional): config.
     """
     assert mode in ["train", "val", "test"], "Mode must be one of ['train', 'val', 'test']"
@@ -103,6 +88,6 @@ def get_image_dataset(mode: str, dataset_path: Path, args) -> Dataset:
         transform = transforms.Compose(t)
 
     dataset = CreateImageDataset(
-        dataset_path=dataset_path, mode=mode, transform=transform
+        dataset_path=dataset_path, scores_file=scores_file, mode=mode, transform=transform
     )
     return dataset
