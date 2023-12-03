@@ -113,12 +113,10 @@ def main(args):
     # Data preprocessing and dataset creation
     cudnn.benchmark = True
     train_dataset = get_image_dataset(mode="train",
-                                      dataset_path=args.dataset,
-                                      args=args)
+                                      dataset_path=args.dataset)
 
     val_dataset = get_image_dataset(mode="val",
-                                    dataset_path=args.dataset,
-                                    args=args)
+                                    dataset_path=args.dataset)
 
     # Setting up data samplers
     num_tasks = distributed.get_world_size()  # GPU's RAM
@@ -156,7 +154,8 @@ def main(args):
         batch_size=args.test_batch_size,
         num_workers=args.num_workers,
         pin_memory=args.pin_mem,
-        drop_last=False)
+        drop_last=False
+    )
 
     mcm = MCM(num_keep_patches=args.num_keep_patches)
 

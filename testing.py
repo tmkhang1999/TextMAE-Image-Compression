@@ -136,8 +136,7 @@ def eval_model(
     metrics = defaultdict(float)
 
     test_dataset = get_image_dataset(mode="test",
-                                     dataset_path=input_dir,
-                                     args=args)
+                                     dataset_path=input_dir)
     test_dataloader = DataLoader(
         test_dataset,
         sampler=None,
