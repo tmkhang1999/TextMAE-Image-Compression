@@ -21,7 +21,7 @@
 
 Most image codecs spend the same effort on every region, including smooth sky and blurred background that a neural network can fill in by itself. The purpose of this project is to test whether a codec can send only the informative patches and still reconstruct a good image at very low bit rates. TextMAE does this in three steps: it drops the easy patches, codes the remaining ones with a learned codec, and adds a one-sentence caption so that a diffusion model can restore detail.
 
-On two Kodak images, TextMAE reaches **22 dB at 0.02 bpp**, a rate at which JPEG and WebP cannot produce an image at all. At 0.12 bpp it is 6.5 dB better than JPEG at a similar size ([Results](#results)).
+On two Kodak images, TextMAE reaches **22 dB at a reported 0.02 bpp**, a rate at which JPEG and WebP cannot produce an image at all (see the note on patch positions in the [Discussion](#discussion)). At 0.12 bpp it is 6.5 dB better than JPEG at a similar size ([Results](#results)).
 
 <p align="center">
   <img src="assets/figures/overview.svg" width="100%" alt="TextMAE overview: select patches, code them, decode, refine with a caption">
@@ -71,7 +71,7 @@ Each point is one compressed file, and up and to the left is better. JPEG and We
 | Aircraft (kodim20) | 0.020 bpp / 22.44 dB | 0.07 bpp / 25.6 dB | 0.15 bpp / 27.8 dB |
 | Parrots (kodim23)  | 0.018 bpp / 22.2 dB  | 0.06 bpp / 26.1 dB | 0.12 bpp / 27.5 dB |
 
-1. **Below 0.13 bpp, only TextMAE works.** JPEG stops at about 0.13 bpp and WebP at about 0.15 to 0.18 bpp, while TextMAE still gives 22 dB at 0.02 bpp.
+1. **Below 0.13 bpp, only TextMAE works, if its rates are right.** JPEG stops at about 0.13 bpp and WebP at about 0.15 to 0.18 bpp, while TextMAE still gives 22 dB at 0.02 bpp.
 2. **At similar sizes, TextMAE is clearly better than JPEG.** On the parrots, it gives 27.5 dB at 0.12 bpp, against 21.0 dB for JPEG at 0.14 bpp.
 3. **Against WebP, TextMAE is on par or better.** On the aircraft, the two are within 0.3 dB at 0.15 bpp (27.8 against 27.5 dB). On the parrots, TextMAE reaches 27.5 dB at 0.12 bpp, while WebP's lowest setting gives 26.6 dB at 0.18 bpp.
 
@@ -85,8 +85,8 @@ These results are encouraging, but they should be read with care.
 
 - **The evaluation is small.** It covers two Kodak images at three rates, and no run without patch dropping was done, so the contribution of each idea is not measured.
 - **Generated detail is plausible, not faithful.** The refiner invents texture that fits the caption (see the facial stripes above). It can look better while scoring lower in PSNR, so a perceptual metric such as LPIPS or FID would judge it more fairly.
-- **Side information is costly at very low rates.** The 58-byte caption adds 0.009 bpp, which is a third of the budget at 0.02 bpp, and the patch positions add more.
-- **The decoder is heavy.** BLIP and SDXL need about 8 GB of weights, and refining one 1024 x 1024 image takes 82 s on an M3 Pro. This suits archival storage more than real-time use.
+- **Patch positions are expensive, and the reported rates may not include them.** The decoder needs to know where the kept patches belong. The positions are Huffman-coded, but the 196 indices are all distinct, so the coder saves nothing: they cost 1,508 bits, or 0.030 bpp at 224 x 224, more than the 0.02 bpp point above. The original experiments' rates could not be re-checked, so they may leave this cost out. Sorting the kept tokens by index would reduce it to a 196-bit mask (about 0.003 bpp), at the price of retraining. The 58-byte caption adds a further 0.009 bpp.
+- **The decoder is heavy.** BLIP and SDXL need about 8 GB of weights, and refining one 1024 x 1024 image takes about a minute on an M3 Pro (64 and 82 s in two runs). This suits archival storage more than real-time use.
 - **The code changed after the experiments.** Three bugs were fixed: the decoder is now placed correctly (each kept token was one position off), the texture map uses the original image, and ties between equal scores are broken at random. The old checkpoints are therefore not compatible and would need retraining.
 
 In sum, dropping patches by score and guiding the decoder with a short caption is a promising way to reach rates below those of JPEG and WebP. A full Kodak evaluation and an ablation are the natural next steps.
@@ -98,27 +98,22 @@ TextMAE builds on the hyperprior and channel-wise entropy models of Ball&eacute;
 ## Getting started
 
 ```bash
-git clone https://github.com/tmkhang1999/TextMAE-Image-Compression.git
-cd TextMAE-Image-Compression
-pip install -r requirements.txt   # timm must be 0.4.5
+git clone https://github.com/tmkhang1999/TextMAE-Image-Compression.git && cd TextMAE-Image-Compression
+bash scripts/setup.sh                                                    # dependencies (timm 0.4.5) and MAE weights
 
-# 1. patch scores (the same --input_size for training and evaluation)
-python generate_scores.py --training_path datasets/train_dataset --testing_path datasets/test_dataset
-# 2. train the codec
-python train.py -d datasets/train_dataset --epochs 100 --output_dir weights --log_dir logs
-# 3. compress and decompress the test set (reconstructions and report.json)
-python evaluate.py -d datasets/test_dataset -c weights/best_model.pth -o results --cuda
-# 4. text guidance: BLIP captions and SDXL refinement (CUDA, Apple MPS or CPU)
-python refine.py -d datasets/test_dataset -r results -o results_refined
+bash scripts/scores.sh datasets/kodak_train datasets/kodak_test         # patch scores, once per dataset
+bash scripts/train.sh datasets/kodak_train weights                      # train the codec
+bash scripts/evaluate.sh weights/best_model.pth datasets/kodak results  # real bitstream: PSNR, MS-SSIM, bpp
+bash scripts/refine.sh datasets/kodak results results_refined          # BLIP caption + SDXL (CUDA, MPS or CPU)
 ```
 
-Training uses `datasets/<name>/{train,val}/*.png`, and testing uses `datasets/<name>/*.png`; the score files are written to `datasets/<name>_scores/`. The Kodak images are included. Useful options are `--model` (`textmae_base_patch16` or `textmae_large_patch16`), `--num_keep_patches`, `--patch_selection` (`stratified` or `multinomial`), `--pretrained` (an official MAE checkpoint) and `--lambda`. `setup.sh` downloads the MAE ViT-Large weights, and `python tools/make_figures.py` rebuilds the figures.
+Every script prints its options when run without arguments, and `python -m src.training --help` lists all training options (`--model`, `--num_keep_patches`, `--patch_selection`, `--pretrained`, `--lambda`). Training expects `datasets/<name>/{train,val}/*.png` and testing `datasets/<name>/*.png`; the scores go to `datasets/<name>_scores/`, and the Kodak images are included. `python -m tools.figures.make_figures` rebuilds the figures of this README.
 
 ```
-train.py  evaluate.py  refine.py  generate_scores.py    entry points
-textmae/   config, data, models, losses, coding, engine, utils
-extras/    BLIP / BLIP-2 captioner and SDXL refiner
-tools/     figure generation, refinement example, dataset preparation
+models/    TextMAE (MAE + LIC), patch selection, text guidance (BLIP, SDXL)
+src/       training.py, inference.py, refine.py, scores.py, losses/, utils/
+scripts/   train.sh, evaluate.sh, refine.sh, scores.sh, setup.sh
+tools/     figures/ (README figures), prepare_imagenet.py
 ```
 
 ## Acknowledgements and citation
