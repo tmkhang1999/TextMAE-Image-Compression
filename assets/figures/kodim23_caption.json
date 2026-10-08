@@ -1,0 +1,15 @@
+{
+  "caption": "there are two parrots that are standing next to each other",
+  "caption_bytes": 58,
+  "caption_bpp_at_224": 0.009247448979591837,
+  "captioner": "Salesforce/blip-image-captioning-large",
+  "refiner": "stabilityai/stable-diffusion-xl-refiner-1.0",
+  "strength": 0.3,
+  "device": "mps",
+  "timings_s": {
+    "load_captioner_s": 1.1,
+    "caption_s": 0.7,
+    "load_refiner_s": 15.1,
+    "refine_s": 82.0
+  }
+}

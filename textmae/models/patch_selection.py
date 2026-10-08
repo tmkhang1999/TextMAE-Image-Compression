@@ -10,13 +10,22 @@ import torch
 import torch.nn.functional as F
 
 
+def _rank_desc(indices, score):
+    """Order `indices` by descending score; equal scores are ordered at random."""
+    shuffled = indices[torch.randperm(len(indices), device=indices.device)]
+    order = torch.sort(score[shuffled], descending=True, stable=True).indices
+    return shuffled[order]
+
+
 def stratified_ids_shuffle(total_scores, num_keep):
     """
-    Deterministic, score-stratified selection (the default).
+    Score-stratified ("percentile") selection, the default.
 
-    Scores are split into 10 buckets by percentile. The top bucket is always kept;
-    the remaining quota is spread over the other buckets with a softmax over their
-    mean score, keeping the highest-scoring patches inside each bucket.
+    Scores are split into 10 percentile buckets. The top bucket is always kept; the
+    remaining budget is shared by the other buckets in proportion to the softmax of
+    their mean score, taking the best patches of each bucket. Any budget left after
+    rounding goes to the best remaining patches. Ties are broken at random, so large
+    areas of equal (e.g. zero) score are not filled from the top of the image.
     """
     num_patches = total_scores.shape[1]
     if num_keep > num_patches:
@@ -24,40 +33,37 @@ def stratified_ids_shuffle(total_scores, num_keep):
             f"num_keep_patches ({num_keep}) is larger than the number of patches ({num_patches})"
         )
 
-    percentiles = torch.arange(0.1, 0.91, 0.1, dtype=torch.float32, device=total_scores.device)
+    device = total_scores.device
+    percentiles = torch.arange(0.1, 0.91, 0.1, dtype=torch.float32, device=device)
     top_bucket = len(percentiles)
 
     all_ids = []
     for score in total_scores:
-        thresholds = torch.quantile(score.unique(), percentiles, dim=0)
+        thresholds = torch.quantile(score.unique().float(), percentiles)
         buckets = torch.bucketize(score, thresholds)
 
-        bucket_means = torch.stack(
-            [score[buckets == b].mean() for b in range(top_bucket + 1)]
-        ).float().cpu()
-        quota = torch.round(
-            F.softmax(bucket_means[:-1], dim=0) * (num_keep - int((buckets == top_bucket).sum()))
-        ).int()
+        top = torch.nonzero(buckets == top_bucket).view(-1)
+        budget = max(num_keep - len(top), 0)
 
-        kept_values = score[buckets == top_bucket].tolist()
+        # Empty buckets get -inf so they receive no share of the budget
+        means = torch.stack([
+            score[buckets == b].mean() if (buckets == b).any() else torch.tensor(float("-inf"), device=device)
+            for b in range(top_bucket)
+        ]).float()
+        quota = torch.round(F.softmax(means, dim=0) * budget).long().tolist()
+
+        chosen = [top]
         for bucket, count in enumerate(quota):
-            ranked, _ = torch.sort(score[buckets == bucket])
-            kept_values.extend(ranked[len(ranked) - int(count):].tolist())
+            members = torch.nonzero(buckets == bucket).view(-1)
+            chosen.append(_rank_desc(members, score)[:count])
+        chosen = _rank_desc(torch.cat(chosen), score)[:num_keep]
 
-        # Turn the kept score values back into patch indices (ties are resolved in index order).
-        ids, seen = [], set()
-        remaining_freq = {}
-        for value in kept_values:
-            remaining_freq[value] = remaining_freq.get(value, 0) + 1
-        for value, freq in remaining_freq.items():
-            for idx in torch.nonzero(score == value).view(-1)[:freq].tolist():
-                ids.append(idx)
-                seen.add(idx)
+        is_chosen = torch.zeros(num_patches, dtype=torch.bool, device=device)
+        is_chosen[chosen] = True
+        rest = _rank_desc(torch.nonzero(~is_chosen).view(-1), score)
+        all_ids.append(torch.cat([chosen, rest]))
 
-        ids.extend(i for i in range(num_patches) if i not in seen)
-        all_ids.append(ids)
-
-    return torch.tensor(all_ids)
+    return torch.stack(all_ids).cpu()
 
 
 def multinomial_ids_shuffle(total_scores, num_keep, eps=1e-6):
