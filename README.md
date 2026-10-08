@@ -24,17 +24,14 @@ Most image codecs spend the same effort on every region, including smooth sky an
 On two Kodak images, TextMAE reaches **22 dB at 0.02 bpp**, a rate at which JPEG and WebP cannot produce an image at all. At 0.12 bpp it is 6.5 dB better than JPEG at a similar size ([Results](#results)).
 
 <p align="center">
-  <img src="assets/figures/concept.svg" width="85%" alt="Standard learned codec vs TextMAE">
+  <img src="assets/figures/overview.svg" width="100%" alt="TextMAE overview: select patches, code them, decode, refine with a caption">
 </p>
 
 Two terms are used throughout. **bpp** (bits per pixel) is the file size divided by the number of pixels, so lower means a smaller file. **PSNR** (in dB) measures how close the decoded image is to the original, so higher means a more faithful image.
 
 ## Method
 
-<p align="center">
-  <img src="assets/figures/pipeline.svg" width="100%" alt="TextMAE pipeline">
-</p>
-<sub><b>Pipeline.</b> <b>(1)</b> Patch scores <i>s</i> select the kept patches <i>x<sub>K</sub></i>. <b>(2)</b> A ViT encoder and <i>g<sub>a</sub></i> map <i>x<sub>K</sub></i> to the latent <i>y</i>, which is quantized (Q) and arithmetic-coded (AE / AD) with probabilities (&mu;, &sigma;) from the entropy model. Patch positions are Huffman-coded. On the decoder side, <i>g<sub>s</sub></i> and a ViT decoder reconstruct <i>x&#770;</i>, with mask tokens at the dropped positions. <b>(3)</b> BLIP captions <i>x</i>, and the SDXL refiner turns <i>x&#770;</i> into the final image <i>x&#771;</i> guided by the caption <i>c</i>. Trapezoids are trained encoders and decoders; the snowflake marks frozen pretrained models.</sub>
+The figure above shows the three stages. Blue boxes are trained here, orange boxes are handcrafted, and white boxes are pretrained models used as-is. The bit rate on each arrow is the cost of that stage.
 
 **First, patch selection.** Every 16x16 patch receives a score: the product of a *structure* score (quad-tree segmentation) and a *texture* score (absolute Laplacian), normalised to [0, 1]. Smooth patches score low because the decoder can infer them from their neighbours. The default *percentile sampling* keeps 144 of 196 patches: it always keeps the top score bucket and shares the rest of the budget across the other buckets by the softmax of their mean score. A *multinomial* variant samples patches in proportion to their score.
 
@@ -48,6 +45,11 @@ Two terms are used throughout. **bpp** (bits per pixel) is the file size divided
 $$
 \mathcal{L} = \underbrace{\mathbb{E}\left[-\log_2 p(\hat y \mid \hat z) - \log_2 p(\hat z)\right] / N_{\text{pixels}}}_{\text{rate (bpp)}} + \lambda \left(0.25\,(1-\mathrm{SSIM}) + 10\,\lVert x-\hat x\rVert_1 + 0.1\,\mathcal{L}_{\text{VGG}}\right)
 $$
+
+<p align="center">
+  <img src="assets/figures/codec.svg" width="100%" alt="MAE codec and entropy model">
+</p>
+<p align="center"><sub>Detail of the learned codec. (a) The ViT encoder and <i>g<sub>a</sub></i> map the kept patches to the latent <i>y</i>, which is quantized (Q) and arithmetic-coded (AE / AD); <i>g<sub>s</sub></i> and the ViT decoder reconstruct the image, inserting mask tokens at the dropped positions. (b) The entropy model predicts a Gaussian (&mu;, &sigma;) for every latent.</sub></p>
 
 **Third, text guidance.** BLIP describes the original image in one sentence, and the caption is sent with the bitstream as plain text. At the decoder, the Stable Diffusion XL refiner runs image-to-image on $\hat x$ with the caption as its prompt, so the detail it adds matches what the image shows. The reported rate is the bits of $y$, $z$, the patch positions and the caption, divided by the number of pixels.
 
