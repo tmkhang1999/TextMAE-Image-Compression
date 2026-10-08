@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1000 506" width="1000" height="506" role="img" aria-labelledby="t d">
+  <title id="t">TextMAE codec</title>
+  <desc id="d">(a) The MAE codec: a ViT encoder and g_a map the kept patches to a latent y that is quantized and arithmetic-coded; g_s and a ViT decoder reconstruct the image, inserting mask tokens at the dropped positions given by the Huffman-coded patch positions. (b) The entropy model: a hyperprior and a channel-wise context model predict a Gaussian for every latent.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#475467"/></marker>
+  </defs>
+  <rect y="0" width="1000" height="506" fill="#ffffff"/>
+  <text x="16" y="22" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#172033" text-anchor="start">(a)  MAE codec</text>
+  <text x="742" y="22" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#172033" text-anchor="start">(b)  Entropy model</text>
+  <text x="84" y="50" font-family="Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#172033" text-anchor="start">MAE encoder and analysis transform <tspan font-family="'Times New Roman', Times, serif" font-style="italic">g</tspan><tspan font-family="'Times New Roman', Times, serif" font-style="italic" font-size="75%" dy="3">a</tspan><tspan dy="-3"></tspan></text>
+  <text x="414" y="50" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#475467" text-anchor="start">runs in the encoder</text>
+  <text x="40" y="105" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="normal" fill="#172033" text-anchor="middle"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">x</tspan><tspan font-family="'Times New Roman', Times, serif" font-style="italic" font-size="75%" dy="3">K</tspan><tspan dy="-3"></tspan></text>
+  <text x="40" y="124" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#475467" text-anchor="middle">kept patches</text>
+  <path d="M66 112 H82" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <rect x="84" y="62" width="44" height="100" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.7"/>
+  <text x="106.0" y="112.0" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" transform="rotate(-90 106.0 112.0)" dominant-baseline="central">Patch embed</text>
+  <rect x="138" y="62" width="44" height="100" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.7"/>
+  <text x="160.0" y="112.0" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" transform="rotate(-90 160.0 112.0)" dominant-baseline="central">ViT blocks x12</text>
+  <rect x="192" y="62" width="44" height="100" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.7"/>
+  <text x="214.0" y="112.0" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" transform="rotate(-90 214.0 112.0)" dominant-baseline="central">Reshape to grid</text>
+  <rect x="246" y="62" width="44" height="100" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.7"/>
+  <text x="268.0" y="112.0" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" transform="rotate(-90 268.0 112.0)" dominant-baseline="central">Conv 1x1 x4</text>
+  <text x="106.0" y="178" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#475467" text-anchor="middle">144 x 768</text>
+  <text x="268.0" y="178" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#475467" text-anchor="middle">12 x 12 x 384</text>
+  <path d="M290 112 H536" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <text x="400" y="102" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="normal" fill="#172033" text-anchor="middle"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">y</tspan></text>
+  <circle cx="500" cy="112" r="3.2" fill="#475467"/>
+  <rect x="536" y="96" width="48" height="32" rx="8" fill="#ffffff" stroke="#475467" stroke-width="1.7"/>
+  <text x="560" y="117" font-family="Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#172033" text-anchor="middle">Q</text>
+  <path d="M560 128 V148" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <rect x="530" y="150" width="60" height="32" rx="16" fill="#f6e3bd" stroke="#b7791f" stroke-width="1.7"/>
+  <text x="560" y="171" font-family="Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#172033" text-anchor="middle">AE</text>
+  <path d="M560 182 V200" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <rect x="553" y="202" width="14" height="10" fill="#172033" stroke="#172033" stroke-width="0.8"/>
+  <rect x="553" y="212" width="14" height="10" fill="#ffffff" stroke="#172033" stroke-width="0.8"/>
+  <rect x="553" y="222" width="14" height="10" fill="#172033" stroke="#172033" stroke-width="0.8"/>
+  <rect x="553" y="232" width="14" height="10" fill="#172033" stroke="#172033" stroke-width="0.8"/>
+  <rect x="553" y="242" width="14" height="10" fill="#ffffff" stroke="#172033" stroke-width="0.8"/>
+  <rect x="553" y="252" width="14" height="10" fill="#ffffff" stroke="#172033" stroke-width="0.8"/>
+  <rect x="553" y="262" width="14" height="10" fill="#172033" stroke="#172033" stroke-width="0.8"/>
+  <path d="M560 272 V286" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <text x="84" y="236" font-family="Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#172033" text-anchor="start">MAE decoder and synthesis transform <tspan font-family="'Times New Roman', Times, serif" font-style="italic">g</tspan><tspan font-family="'Times New Roman', Times, serif" font-style="italic" font-size="75%" dy="3">s</tspan><tspan dy="-3"></tspan></text>
+  <text x="414" y="236" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#475467" text-anchor="start">runs in the decoder</text>
+  <rect x="530" y="286" width="60" height="32" rx="16" fill="#f6e3bd" stroke="#b7791f" stroke-width="1.7"/>
+  <text x="560" y="307" font-family="Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#172033" text-anchor="middle">AD</text>
+  <path d="M530 302 H294" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <text x="420" y="292" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="normal" fill="#172033" text-anchor="middle"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">y&#770;</tspan></text>
+  <rect x="246" y="252" width="44" height="100" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.7"/>
+  <text x="268.0" y="302.0" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" transform="rotate(-90 268.0 302.0)" dominant-baseline="central">ConvT 1x1 x4</text>
+  <rect x="192" y="252" width="44" height="100" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.7"/>
+  <text x="214.0" y="302.0" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" transform="rotate(-90 214.0 302.0)" dominant-baseline="central">Mask tokens</text>
+  <rect x="138" y="252" width="44" height="100" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.7"/>
+  <text x="160.0" y="302.0" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" transform="rotate(-90 160.0 302.0)" dominant-baseline="central">ViT blocks x8</text>
+  <rect x="84" y="252" width="44" height="100" rx="6" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.7"/>
+  <text x="106.0" y="302.0" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#172033" text-anchor="middle" transform="rotate(-90 106.0 302.0)" dominant-baseline="central">Predict patches</text>
+  <text x="268.0" y="368" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#475467" text-anchor="middle">12 x 12 x 768</text>
+  <text x="106.0" y="368" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="normal" fill="#475467" text-anchor="middle">224 x 224 x 3</text>
+  <path d="M84 302 H66" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <text x="40" y="296" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="normal" fill="#172033" text-anchor="middle"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">x&#770;</tspan></text>
+  <rect x="650" y="96" width="70" height="222" rx="12" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.7"/>
+  <text x="679.0" y="210" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#172033" text-anchor="middle" transform="rotate(-90 679.0 210)" dominant-baseline="central">Entropy model</text>
+  <text x="697.0" y="210" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#475467" text-anchor="middle" transform="rotate(-90 697.0 210)" dominant-baseline="central">used by encoder and decoder</text>
+  <path d="M650 166 H596" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <text x="620" y="158" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="normal" fill="#172033" text-anchor="middle"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">&#956;</tspan>, <tspan font-family="'Times New Roman', Times, serif" font-style="italic">&#963;</tspan></text>
+  <path d="M650 302 H596" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <text x="620" y="294" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="normal" fill="#172033" text-anchor="middle"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">&#956;</tspan>, <tspan font-family="'Times New Roman', Times, serif" font-style="italic">&#963;</tspan></text>
+  <path d="M500 112 V54 H685.0 V94" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <circle cx="500" cy="302" r="3.2" fill="#475467"/>
+  <path d="M500 302 V376 H685.0 V320" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text x="600" y="392" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#475467" text-anchor="middle">decoded slices</text>
+  <text x="84" y="422" font-family="Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#172033" text-anchor="start">Patch positions (side information)</text>
+  <rect x="84" y="430" width="126" height="44" rx="12" fill="#f6e3bd" stroke="#b7791f" stroke-width="1.7"/>
+  <text x="147.0" y="447.25" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" fill="#172033" text-anchor="middle">Selection</text>
+  <text x="147.0" y="465.25" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#475467" text-anchor="middle">144 of 196 ids</text>
+  <path d="M210 452 H240" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <rect x="242" y="430" width="104" height="44" rx="12" fill="#f6e3bd" stroke="#b7791f" stroke-width="1.7"/>
+  <text x="294.0" y="447.25" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" fill="#172033" text-anchor="middle">Huffman</text>
+  <text x="294.0" y="465.25" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#475467" text-anchor="middle">encode</text>
+  <path d="M346 452 H374" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <rect x="376" y="445" width="10" height="14" fill="#172033" stroke="#172033" stroke-width="0.8"/>
+  <rect x="386" y="445" width="10" height="14" fill="#ffffff" stroke="#172033" stroke-width="0.8"/>
+  <rect x="396" y="445" width="10" height="14" fill="#172033" stroke="#172033" stroke-width="0.8"/>
+  <rect x="406" y="445" width="10" height="14" fill="#172033" stroke="#172033" stroke-width="0.8"/>
+  <rect x="416" y="445" width="10" height="14" fill="#ffffff" stroke="#172033" stroke-width="0.8"/>
+  <rect x="426" y="445" width="10" height="14" fill="#ffffff" stroke="#172033" stroke-width="0.8"/>
+  <path d="M438 452 H468" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <rect x="470" y="430" width="104" height="44" rx="12" fill="#f6e3bd" stroke="#b7791f" stroke-width="1.7"/>
+  <text x="522.0" y="447.25" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" fill="#172033" text-anchor="middle">Huffman</text>
+  <text x="522.0" y="465.25" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#475467" text-anchor="middle">decode</text>
+  <path d="M522 430 V398 H214.0 V356" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text x="554" y="392" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#475467" text-anchor="end">where to put the mask tokens</text>
+  <text x="860" y="50" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="normal" fill="#172033" text-anchor="middle"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">y</tspan></text>
+  <path d="M860 56 V70" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <rect x="748" y="72" width="224" height="40" rx="12" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.7"/>
+  <text x="860.0" y="96.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" fill="#172033" text-anchor="middle">Hyper analysis <tspan font-family="'Times New Roman', Times, serif" font-style="italic">h</tspan><tspan font-family="'Times New Roman', Times, serif" font-style="italic" font-size="75%" dy="3">a</tspan><tspan dy="-3"></tspan></text>
+  <path d="M860 112 V138" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <text x="874" y="130" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="normal" fill="#172033" text-anchor="start"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">z</tspan></text>
+  <rect x="748" y="140" width="224" height="52" rx="12" fill="#f6e3bd" stroke="#b7791f" stroke-width="1.7"/>
+  <text x="860.0" y="161.25" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" fill="#172033" text-anchor="middle">Q, AE / AD</text>
+  <text x="860.0" y="179.25" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#475467" text-anchor="middle">factorized prior</text>
+  <path d="M860 192 V218" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <rect x="748" y="220" width="224" height="40" rx="12" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.7"/>
+  <text x="860.0" y="244.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" fill="#172033" text-anchor="middle">Hyper synthesis <tspan font-family="'Times New Roman', Times, serif" font-style="italic">h</tspan><tspan font-family="'Times New Roman', Times, serif" font-style="italic" font-size="75%" dy="3">s</tspan><tspan dy="-3"></tspan></text>
+  <path d="M860 260 V286" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <rect x="748" y="288" width="224" height="66" rx="12" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.7"/>
+  <text x="860.0" y="307.5" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" fill="#172033" text-anchor="middle">Channel-wise context</text>
+  <text x="860.0" y="325.5" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#475467" text-anchor="middle">12 slices of y, Conv 3x3 stacks</text>
+  <text x="860.0" y="343.0" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#475467" text-anchor="middle">+ latent residual prediction</text>
+  <rect x="758.0" y="372" width="14" height="14" rx="3" fill="#b9d6ff" stroke="#1677ff" stroke-width="1.2"/>
+  <rect x="775.0" y="372" width="14" height="14" rx="3" fill="#b9d6ff" stroke="#1677ff" stroke-width="1.2"/>
+  <rect x="792.0" y="372" width="14" height="14" rx="3" fill="#b9d6ff" stroke="#1677ff" stroke-width="1.2"/>
+  <rect x="809.0" y="372" width="14" height="14" rx="3" fill="#b9d6ff" stroke="#1677ff" stroke-width="1.2"/>
+  <rect x="826.0" y="372" width="14" height="14" rx="3" fill="#b9d6ff" stroke="#1677ff" stroke-width="1.2"/>
+  <rect x="843.0" y="372" width="14" height="14" rx="3" fill="#b9d6ff" stroke="#1677ff" stroke-width="1.2"/>
+  <rect x="860.0" y="372" width="14" height="14" rx="3" fill="#ffffff" stroke="#1677ff" stroke-width="1.2"/>
+  <rect x="877.0" y="372" width="14" height="14" rx="3" fill="#ffffff" stroke="#1677ff" stroke-width="1.2"/>
+  <rect x="894.0" y="372" width="14" height="14" rx="3" fill="#1677ff" stroke="#1677ff" stroke-width="1.2"/>
+  <rect x="911.0" y="372" width="14" height="14" rx="3" fill="#ffffff" stroke="#1677ff" stroke-width="1.2"/>
+  <rect x="928.0" y="372" width="14" height="14" rx="3" fill="#ffffff" stroke="#1677ff" stroke-width="1.2"/>
+  <rect x="945.0" y="372" width="14" height="14" rx="3" fill="#ffffff" stroke="#1677ff" stroke-width="1.2"/>
+  <text x="860" y="404" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#475467" text-anchor="middle">slice i uses the hyperprior and</text>
+  <text x="860" y="418" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#475467" text-anchor="middle">the first min(i, 6) decoded slices (shaded)</text>
+  <path d="M860 428 V448" fill="none" stroke="#475467" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <text x="860" y="466" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#172033" text-anchor="middle"><tspan font-family="'Times New Roman', Times, serif" font-style="italic">&#956;</tspan>, <tspan font-family="'Times New Roman', Times, serif" font-style="italic">&#963;</tspan> for every latent</text>
+  <rect x="16" y="484" width="26" height="16" rx="5" fill="#eaf3ff" stroke="#1677ff" stroke-width="1.7"/>
+  <text x="50" y="496" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#475467" text-anchor="start">learned module</text>
+  <rect x="160" y="484" width="26" height="16" rx="5" fill="#f6e3bd" stroke="#b7791f" stroke-width="1.7"/>
+  <text x="194" y="496" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#475467" text-anchor="start">entropy coding</text>
+  <rect x="300" y="484" width="26" height="16" rx="5" fill="#ffffff" stroke="#475467" stroke-width="1.7"/>
+  <text x="334" y="496" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#475467" text-anchor="start">quantizer</text>
+  <text x="440" y="496" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#475467" text-anchor="start">Q: quantizer, AE / AD: arithmetic encoder / decoder</text>
+</svg>
