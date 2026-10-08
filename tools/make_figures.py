@@ -208,6 +208,7 @@ KINDS = {  # box kind -> (fill, stroke)
     "learned": (BLUE_FILL, BLUE_EDGE),
     "handcrafted": (ORANGE_FILL, ORANGE_EDGE),
     "entropy": (ORANGE_FILL, ORANGE_EDGE),
+    "lic": ("#d3e4ff", "#0b4fbf"),
     "pretrained": ("#ffffff", MUTED),
 }
 SANS = "Helvetica, Arial, sans-serif"
@@ -323,7 +324,8 @@ def make_overview_svg(ex, out_path):
     """Whole method in one row: select, code, decode, refine; bit rates on the arrows."""
     f = Fig(1080, 440, "TextMAE overview",
             "The input image is reduced to its 144 most informative patches, which a learned MAE codec "
-            "compresses to 0.12 bits per pixel. A BLIP caption of the input costs 0.009 bits per pixel "
+            "compresses to 0.12 bits per pixel: an MAE (ViT) backbone fills in the dropped patches and a learned "
+            "image compression (LIC) part produces the bitstream. A BLIP caption of the input costs 0.009 bits per pixel "
             "and guides an SDXL refiner that turns the decoded image into the final image.", top=72)
     cy, size = 170, 104  # main row: centre line and image size
     top = cy - size // 2
@@ -340,10 +342,14 @@ def make_overview_svg(ex, out_path):
     f.title(392, top - 12, f'Kept patches {math("x", "K")}')
     f.image(340, top, size, "kept", ex["kept"])
     f.text(392, top + size + 20, "gray = dropped")
-    f.line(f"M446 {cy} H490")
+    f.line(f"M446 {cy} H492")
 
-    # Learned codec
-    f.box(494, cy - 46, 140, 92, "learned", "MAE codec", ["ViT-B + entropy model", "(incl. patch positions)"])
+    # Learned codec: an MAE (ViT) backbone and the LIC part that produces the bits
+    f.rect(494, cy - 68, 140, 136, "learned", rx=12, dashed=True)
+    f.title(564, cy - 49, "Learned codec", size=12.5)
+    f.box(504, cy - 38, 120, 42, "learned", "MAE (ViT)", ["fills dropped patches"])
+    f.line(f"M564 {cy + 6} V{cy + 18}", arrow=False)
+    f.box(504, cy + 18, 120, 42, "lic", "LIC", ["makes the bitstream"])
     f.line(f"M636 {cy} H690")
     f.text(663, cy - 11, "0.12 bpp", size=11, weight="bold", fill=BLUE_EDGE)
 
@@ -376,23 +382,30 @@ def make_overview_svg(ex, out_path):
 
     # Legend
     f.swatch(16, 410, "handcrafted", "handcrafted")
-    f.swatch(150, 410, "learned", "learned, trained here")
-    f.swatch(330, 410, "pretrained", "pretrained, used as-is")
+    f.swatch(140, 410, "learned", "MAE, trained here")
+    f.swatch(300, 410, "lic", "LIC, trained here")
+    f.swatch(450, 410, "pretrained", "frozen, used as-is")
     f.write(out_path)
 
 
 def make_codec_svg(ex, out_path):
     """Detail view: (a) MAE codec main path, (b) entropy model."""
     f = Fig(1000, 506, "TextMAE codec",
-            "(a) The MAE codec: a ViT encoder and g_a map the kept patches to a latent y that is quantized "
+            "(a) The learned codec: an MAE (ViT) encoder and g_a map the kept patches to a latent y that is quantized "
             "and arithmetic-coded; g_s and a ViT decoder reconstruct the image, inserting mask tokens at "
             "the dropped positions given by the Huffman-coded patch positions. (b) The entropy model: a "
             "hyperprior and a channel-wise context model predict a Gaussian for every latent.")
-    f.title(16, 22, "(a)  MAE codec", size=13, anchor="start")
-    f.title(742, 22, "(b)  Entropy model", size=13, anchor="start")
+    f.title(16, 22, "(a)  Learned codec: MAE (ViT) + LIC", size=13, anchor="start")
+    f.title(742, 22, "(b)  Entropy model (LIC)", size=13, anchor="start")
 
     bw, bh, gap, x0 = 44, 100, 10, 84
     xs = [x0 + i * (bw + gap) for i in range(4)]
+
+    def group(x_from, x_to, y, kind, label):
+        """Colored bar with a label above (or below) a run of blocks: which part is MAE, which is LIC."""
+        stroke = KINDS[kind][1]
+        f.add(f'<rect x="{x_from}" y="{y}" width="{x_to - x_from}" height="3" rx="1.5" fill="{stroke}"/>')
+        f.text((x_from + x_to) / 2, y - 6, label, size=11.5, weight="bold", fill=stroke)
 
     def block(x, y, label, kind="learned"):
         f.rect(x, y, bw, bh, kind, rx=6)
@@ -400,13 +413,16 @@ def make_codec_svg(ex, out_path):
 
     # ---- encoder row (centre y = 112)
     ey = 62
-    f.title(x0, 50, f'MAE encoder and analysis transform {math("g", "a")}', size=12.5, anchor="start")
-    f.text(x0 + 330, 50, "runs in the encoder", size=11, anchor="start")
+    f.title(340, 50, "Encoder", size=12.5, anchor="start")
+    f.text(398, 50, "runs at the sender", size=11, anchor="start")
+    group(xs[0], xs[1] + bw, 48, "learned", "MAE (ViT)")
+    group(xs[2], xs[3] + bw, 48, "lic", f'LIC, analysis {math("g", "a")}')
     f.text(40, 105, math("x", "K"), size=16, fill=INK)
     f.text(40, 124, "kept patches", size=10)
     f.line(f"M66 {ey + 50} H{xs[0] - 2}")
-    for x, label in zip(xs, ["Patch embed", "ViT blocks x12", "Reshape to grid", "Conv 1x1 x4"]):
-        block(x, ey, label)
+    for x, label, kind in zip(xs, ["Patch embed", "ViT blocks x12", "Reshape to grid", "Conv 1x1 x4"],
+                              ["learned", "learned", "lic", "lic"]):
+        block(x, ey, label, kind)
     f.text(xs[0] + bw / 2, ey + bh + 16, "144 x 768", size=9.5)
     f.text(xs[3] + bw / 2, ey + bh + 16, "12 x 12 x 384", size=9.5)
 
@@ -426,14 +442,17 @@ def make_codec_svg(ex, out_path):
 
     # ---- decoder row (centre y = 302)
     dy = 252
-    f.title(x0, 236, f'MAE decoder and synthesis transform {math("g", "s")}', size=12.5, anchor="start")
-    f.text(x0 + 330, 236, "runs in the decoder", size=11, anchor="start")
+    f.title(340, 236, "Decoder", size=12.5, anchor="start")
+    f.text(398, 236, "runs at the receiver", size=11, anchor="start")
+    group(xs[0], xs[2] + bw, 236, "learned", "MAE (ViT)")
+    group(xs[3], xs[3] + bw, 236, "lic", f'LIC, {math("g", "s")}')
     f.rect(qx - 30, dy + 34, 60, 32, "entropy", rx=16)
     f.title(qx, dy + 55, "AD", size=12.5)
     f.line(f"M{qx - 30} {dy + 50} H{xs[3] + bw + 4}")
     f.text(420, dy + 40, math("y", hat="^"), size=16, fill=INK)
-    for x, label in zip(reversed(xs), ["ConvT 1x1 x4", "Mask tokens", "ViT blocks x8", "Predict patches"]):
-        block(x, dy, label)
+    for x, label, kind in zip(reversed(xs), ["ConvT 1x1 x4", "Mask tokens", "ViT blocks x8", "Predict patches"],
+                              ["lic", "learned", "learned", "learned"]):
+        block(x, dy, label, kind)
     f.text(xs[3] + bw / 2, dy + bh + 16, "12 x 12 x 768", size=9.5)
     f.text(xs[0] + bw / 2, dy + bh + 16, "224 x 224 x 3", size=9.5)
     f.line(f"M{xs[0]} {dy + 50} H66")
@@ -441,7 +460,7 @@ def make_codec_svg(ex, out_path):
 
     # ---- entropy model box shared by encoder and decoder
     ex0, ew = 650, 70
-    f.rect(ex0, ey + 34, ew, dy + 66 - ey - 34, "learned")
+    f.rect(ex0, ey + 34, ew, dy + 66 - ey - 34, "lic")
     f.text(ex0 + ew / 2 - 6, 210, "Entropy model", size=13, weight="bold", fill=INK, rotate=True)
     f.text(ex0 + ew / 2 + 12, 210, "used by encoder and decoder", size=10.5, rotate=True)
     f.line(f"M{ex0} {ey + 104} H{qx + 36}")
@@ -451,7 +470,7 @@ def make_codec_svg(ex, out_path):
     f.line(f"M500 {ey + 50} V{ey - 8} H{ex0 + ew / 2} V{ey + 32}")
     f.dot(qx - 60, dy + 50)
     f.line(f"M{qx - 60} {dy + 50} V{dy + 124} H{ex0 + ew / 2} V{dy + 68}", dashed=True)
-    f.text(600, dy + 140, "decoded slices", size=11)
+    f.text(640, dy + 140, "decoded slices", size=11)
 
     # ---- patch positions (side information), bottom row
     py = 430
@@ -470,14 +489,14 @@ def make_codec_svg(ex, out_path):
     cx, w, bx = 860, 224, 748
     f.text(cx, 50, math("y"), size=16, fill=INK)
     f.line(f"M{cx} 56 V70")
-    f.box(bx, 72, w, 40, "learned", f'Hyper analysis {math("h", "a")}')
+    f.box(bx, 72, w, 40, "lic", f'Hyper analysis {math("h", "a")}')
     f.line(f"M{cx} 112 V138")
     f.text(cx + 14, 130, math("z"), size=14, fill=INK, anchor="start")
     f.box(bx, 140, w, 52, "entropy", "Q, AE / AD", ["factorized prior"])
     f.line(f"M{cx} 192 V218")
-    f.box(bx, 220, w, 40, "learned", f'Hyper synthesis {math("h", "s")}')
+    f.box(bx, 220, w, 40, "lic", f'Hyper synthesis {math("h", "s")}')
     f.line(f"M{cx} 260 V286")
-    f.box(bx, 288, w, 66, "learned", "Channel-wise context", ["12 slices of y, Conv 3x3 stacks", "+ latent residual prediction"])
+    f.box(bx, 288, w, 66, "lic", "Channel-wise context", ["12 slices of y, Conv 3x3 stacks", "+ latent residual prediction"])
     # slice icon
     cells, cell, sx = 12, 17, cx - 12 * 17 / 2
     for i in range(cells):
@@ -493,10 +512,11 @@ def make_codec_svg(ex, out_path):
     f.text(cx, 466, f'{math("&#956;", None)}, {math("&#963;", None)} for every latent', size=11.5, fill=INK)
 
     # legend
-    f.swatch(16, 484, "learned", "learned module", w=26)
-    f.swatch(160, 484, "entropy", "entropy coding", w=26)
-    f.swatch(300, 484, "pretrained", "quantizer", w=26)
-    f.text(440, 496, "Q: quantizer, AE / AD: arithmetic encoder / decoder", size=10.5, anchor="start")
+    f.swatch(16, 484, "learned", "MAE (ViT)", w=26)
+    f.swatch(130, 484, "lic", "LIC (learned image compression)", w=26)
+    f.swatch(360, 484, "entropy", "entropy coding", w=26)
+    f.swatch(500, 484, "pretrained", "quantizer", w=26)
+    f.text(620, 496, "AE / AD: arithmetic encoder / decoder", size=10.5, anchor="start")
     f.write(out_path)
 
 
