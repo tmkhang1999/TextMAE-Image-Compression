@@ -20,14 +20,13 @@ def image_patch_scores(gray, input_size=224, patch_size=16):
     Importance of every patch of a grayscale image, min-max normalised to [0, 1].
 
     score = texture score * structure score, computed on an `input_size` square grid.
-
-    NOTE: the texture map is taken from the image AFTER `structure_map` binarised it in place.
-    That is how the shipped score files were generated, so it is kept for reproducibility.
+    High scores mark detailed, structured regions; smooth regions score low because the
+    MAE decoder can fill them in from their neighbours.
     """
     size = (input_size, input_size)
-    gray = gray.copy()
 
-    s_map = structure_map(gray, size)
+    # structure_map binarises its input in place, so it gets its own copy
+    s_map = structure_map(gray.copy(), size)
     t_map = texture_map(gray, size)
 
     total = patch_means(t_map, patch_size) * patch_means(s_map, patch_size)

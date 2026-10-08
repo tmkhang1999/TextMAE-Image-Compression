@@ -1,29 +1,37 @@
-"""Optional: refine a decoded image with the Stable Diffusion XL refiner, guided by a caption."""
+"""Stable Diffusion XL refiner: sharpen a decoded image, guided by its caption."""
 import torch
-import logging
 from diffusers import StableDiffusionXLImg2ImgPipeline
 
-log = logging.getLogger(__name__)
+from extras.device import best_device
+
+SDXL_REFINER = "stabilityai/stable-diffusion-xl-refiner-1.0"
 
 
 class Diffuser:
     def __init__(self):
         self.model = None
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device, self.dtype = best_device()
 
-    def prepare_model(self, model_name="stable-diffusion-xl-refiner-1.0"):
-        if model_name == "stable-diffusion-xl-refiner-1.0":
-            self.model = stable_diffusion_xl_refiner_1(self.device)
-        else:
-            log.error(f"Model name '{model_name}' is not recognized.")
+    def prepare_model(self, model_name=SDXL_REFINER):
+        """`model_name` is a Hugging Face repo id or a local folder with the pipeline files."""
+        # The fp16 weight files are half the download; fall back to the full ones if absent
+        variant = "fp16" if self.dtype == torch.float16 else None
+        try:
+            pipe = StableDiffusionXLImg2ImgPipeline.from_pretrained(
+                model_name, torch_dtype=self.dtype, variant=variant)
+        except (OSError, ValueError) as err:
+            print(f"fp16 weights not available ({err}); loading the default weights")
+            pipe = StableDiffusionXLImg2ImgPipeline.from_pretrained(model_name, torch_dtype=self.dtype)
+        self.model = pipe.to(self.device)
 
-    def refine_image(self, caption, image):
-        return self.model(caption, image=image).images[0]
-
-
-def stable_diffusion_xl_refiner_1(device):
-    pipe = StableDiffusionXLImg2ImgPipeline.from_pretrained(
-        "stabilityai/stable-diffusion-xl-refiner-1.0", torch_dtype=torch.float16
-    )
-    pipe = pipe.to(device)
-    return pipe
+    def refine_image(self, caption, image, strength=0.3, seed=0):
+        """
+        Args:
+            caption (str): Text prompt, e.g. the BLIP caption of the original image.
+            image (PIL.Image): Decoded image.
+            strength (float): How far the refiner may move away from `image` (0 = unchanged).
+        """
+        if self.model is None:
+            raise RuntimeError("Call prepare_model() before refine_image()")
+        generator = torch.Generator("cpu").manual_seed(seed)
+        return self.model(caption, image=image, strength=strength, generator=generator).images[0]
