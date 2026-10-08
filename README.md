@@ -27,11 +27,11 @@ On two Kodak images, TextMAE reaches **22 dB at 0.02 bpp**, a rate at which JPEG
   <img src="assets/figures/overview.svg" width="100%" alt="TextMAE overview: select patches, code them, decode, refine with a caption">
 </p>
 
-Two terms are used throughout. **bpp** (bits per pixel) is the file size divided by the number of pixels, so lower means a smaller file. **PSNR** (in dB) measures how close the decoded image is to the original, so higher means a more faithful image.
+Four terms are used throughout. **bpp** (bits per pixel) is the file size divided by the number of pixels, so lower means a smaller file. **PSNR** (in dB) measures how close the decoded image is to the original, so higher means a more faithful image. **MAE** (Masked Autoencoder) is a Vision Transformer trained to rebuild an image from a few visible patches; here it encodes the kept patches and fills in the dropped ones. **LIC** (learned image compression) is the part that turns features into a small bitstream: transforms, a quantizer and an entropy coder.
 
 ## Method
 
-The figure above shows the three stages. Blue boxes are trained here, orange boxes are handcrafted, and white boxes are pretrained models used as-is. The bit rate on each arrow is the cost of that stage.
+The figure above shows the three stages. Light blue boxes are the MAE backbone and dark blue boxes the LIC part, both trained here. Orange boxes are handcrafted or entropy coding, and white boxes are frozen pretrained models. The bit rate on each arrow is the cost of that stage.
 
 **First, patch selection.** Every 16x16 patch receives a score: the product of a *structure* score (quad-tree segmentation) and a *texture* score (absolute Laplacian), normalised to [0, 1]. Smooth patches score low because the decoder can infer them from their neighbours. The default *percentile sampling* keeps 144 of 196 patches: it always keeps the top score bucket and shares the rest of the budget across the other buckets by the softmax of their mean score. A *multinomial* variant samples patches in proportion to their score.
 
@@ -40,7 +40,7 @@ The figure above shows the three stages. Blue boxes are trained here, orange box
 </p>
 <p align="center"><sub>Scoring and selection on Kodak <code>kodim23</code>. Gray patches are dropped before encoding; the eyes, beaks and feather edges are kept.</sub></p>
 
-**Second, the learned codec.** A ViT encoder (MAE, ViT-B) processes only the kept patches, and $g_a$ maps their 12 x 12 token grid to the latent $y$. A hyperprior and a channel-wise context model predict a Gaussian for each of 12 slices of $y$, and these predictions drive an rANS arithmetic coder. Because the decoder must know where the kept patches belong, their positions are sent as Huffman-coded side information. The decoder inserts a learned mask token at each of the 52 dropped positions and predicts all 196 patches. The codec is trained end to end with a rate-distortion loss, where $\mathcal{L}_{\text{VGG}}$ compares VGG-16 features and $\lambda$ balances size against quality:
+**Second, the learned codec.** It has two parts. The MAE backbone (ViT-B) encodes only the kept patches and, at the end, predicts all patches from them. The LIC part compresses the features: $g_a$ maps the 12 x 12 token grid to the latent $y$, a hyperprior and a channel-wise context model predict a Gaussian for each of 12 slices of $y$, and these predictions drive an rANS arithmetic coder. Because the decoder must know where the kept patches belong, their positions are sent as Huffman-coded side information. The decoder inserts a learned mask token at each of the 52 dropped positions and predicts all 196 patches. The codec is trained end to end with a rate-distortion loss, where $\mathcal{L}_{\text{VGG}}$ compares VGG-16 features and $\lambda$ balances size against quality:
 
 $$
 \mathcal{L} = \underbrace{\mathbb{E}\left[-\log_2 p(\hat y \mid \hat z) - \log_2 p(\hat z)\right] / N_{\text{pixels}}}_{\text{rate (bpp)}} + \lambda \left(0.25\,(1-\mathrm{SSIM}) + 10\,\lVert x-\hat x\rVert_1 + 0.1\,\mathcal{L}_{\text{VGG}}\right)
@@ -49,7 +49,7 @@ $$
 <p align="center">
   <img src="assets/figures/codec.svg" width="100%" alt="MAE codec and entropy model">
 </p>
-<p align="center"><sub>Detail of the learned codec. (a) The ViT encoder and <i>g<sub>a</sub></i> map the kept patches to the latent <i>y</i>, which is quantized (Q) and arithmetic-coded (AE / AD); <i>g<sub>s</sub></i> and the ViT decoder reconstruct the image, inserting mask tokens at the dropped positions. (b) The entropy model predicts a Gaussian (&mu;, &sigma;) for every latent.</sub></p>
+<p align="center"><sub>Detail of the learned codec. (a) The MAE (ViT) encoder and the LIC transform <i>g<sub>a</sub></i> map the kept patches to the latent <i>y</i>, which is quantized (Q) and arithmetic-coded (AE / AD); <i>g<sub>s</sub></i> and the MAE decoder reconstruct the image, inserting mask tokens at the dropped positions. (b) The LIC entropy model predicts a Gaussian (&mu;, &sigma;) for every latent.</sub></p>
 
 **Third, text guidance.** BLIP describes the original image in one sentence, and the caption is sent with the bitstream as plain text. At the decoder, the Stable Diffusion XL refiner runs image-to-image on $\hat x$ with the caption as its prompt, so the detail it adds matches what the image shows. The reported rate is the bits of $y$, $z$, the patch positions and the caption, divided by the number of pixels.
 
